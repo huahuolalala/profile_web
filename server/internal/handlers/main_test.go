@@ -10,6 +10,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/ut"
 
+	"profile_web/server/internal/auth"
 	"profile_web/server/internal/db"
 )
 
@@ -23,6 +24,13 @@ func newTestApp(t *testing.T) (*server.Hertz, *sql.DB) {
 	h := server.Default()
 	h.POST("/api/register", Register(d))
 	h.POST("/api/login", Login(d))
+	api := h.Group("/api", auth.Middleware())
+	api.GET("/resumes", ListResumes(d))
+	api.POST("/resumes", CreateResume(d))
+	api.GET("/resumes/:id", GetResume(d))
+	api.PUT("/resumes/:id", SaveResume(d))
+	api.PATCH("/resumes/:id", RenameResume(d))
+	api.DELETE("/resumes/:id", DeleteResume(d))
 	return h, d
 }
 
