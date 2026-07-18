@@ -241,7 +241,11 @@ func RenameResume(d *sql.DB) app.HandlerFunc {
 			return
 		}
 		res, err := d.ExecContext(ctx, "UPDATE resumes SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?", req.Title, id, userID(c))
-		if n, _ := res.RowsAffected(); err != nil || n == 0 {
+		if err != nil {
+			fail500(c)
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
 			c.JSON(http.StatusNotFound, utils.H{"code": 404, "message": "简历不存在"})
 			return
 		}
@@ -253,7 +257,11 @@ func DeleteResume(d *sql.DB) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 		res, err := d.ExecContext(ctx, "DELETE FROM resumes WHERE id=? AND user_id=?", id, userID(c))
-		if n, _ := res.RowsAffected(); err != nil || n == 0 {
+		if err != nil {
+			fail500(c)
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
 			c.JSON(http.StatusNotFound, utils.H{"code": 404, "message": "简历不存在"})
 			return
 		}

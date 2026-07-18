@@ -3,13 +3,24 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
+	"modernc.org/sqlite"
 
 	"profile_web/server/internal/auth"
 )
+
+// sqlitePrimaryConstraint 是 SQLite 主结果码 SQLITE_CONSTRAINT（扩展码需 & 0xff 后比较）。
+const sqlitePrimaryConstraint = 19
+
+// isUniqueViolation 报告 err 是否为 SQLite 唯一约束冲突。
+func isUniqueViolation(err error) bool {
+	var serr *sqlite.Error
+	return errors.As(err, &serr) && serr.Code()&0xff == sqlitePrimaryConstraint
+}
 
 type credentials struct {
 	Username string `json:"username"`
@@ -34,7 +45,11 @@ func Register(d *sql.DB) app.HandlerFunc {
 		}
 		res, err := d.ExecContext(ctx, "INSERT INTO users (username, password_hash) VALUES (?, ?)", req.Username, hash)
 		if err != nil {
-			c.JSON(http.StatusConflict, utils.H{"code": 409, "message": "用户名已存在"})
+			if isUniqueViolation(err) {
+				c.JSON(http.StatusConflict, utils.H{"code": 409, "message": "用户名已存在"})
+				return
+			}
+			fail500(c)
 			return
 		}
 		uid, _ := res.LastInsertId()
