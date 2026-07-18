@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Card } from '../types';
+import CardEditor from './CardEditor';
 
 interface Props {
   card: Card;
@@ -61,17 +62,27 @@ export default function CardView(p: Props) {
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
     >
-      <div className="card-header">{c.title}</div>
-      <div className="card-body">
-        {c.blocks.map((b, i) => (
-          <div className="block" key={i}>
-            {b.type === 'text' && <p>{b.text}</p>}
-            {b.type === 'list' && <ul>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>}
-            {b.type === 'tags' && <div className="tags">{b.items.map((it, j) => <span className="tag" key={j}>{it}</span>)}</div>}
-            {b.type === 'image' && b.src && <img src={b.src} alt="" />}
+      {p.editing ? (
+        <CardEditor
+          card={c}
+          onSave={(nc) => { p.onUpdate(nc); p.onCloseEdit(); }}
+          onCancel={p.onCloseEdit}
+        />
+      ) : (
+        <>
+          <div className="card-header">{c.title}</div>
+          <div className="card-body">
+            {c.blocks.map((b, i) => (
+              <div className="block" key={i}>
+                {b.type === 'text' && <p>{b.text}</p>}
+                {b.type === 'list' && <ul>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>}
+                {b.type === 'tags' && <div className="tags">{b.items.map((it, j) => <span className="tag" key={j}>{it}</span>)}</div>}
+                {b.type === 'image' && b.src && <img src={b.src} alt="" />}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }

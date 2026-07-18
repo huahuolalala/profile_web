@@ -28,8 +28,7 @@ export default function Editor() {
   const [loaded, setLoaded] = useState(false);
   const [viewport, setViewport] = useState<Viewport>({ x: 200, y: 80, z: 1 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // v1 仅写入不读取（Task 14 接入 CardEditor 后用于 editing 判断），下划线前缀规避 noUnusedLocals
-  const [_editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null); // null=关闭；''=等源卡片；否则为源卡片 id
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [dragPos, setDragPos] = useState<Record<string, { x: number; y: number }>>({});
@@ -166,7 +165,7 @@ export default function Editor() {
             <CardView
               key={c.id} card={c} z={viewport.z}
               selected={c.id === selectedId}
-              editing={false}
+              editing={c.id === editingId}
               connectMode={connectFrom !== null}
               onClick={onCardClick}
               onEdit={(cid) => { if (connectFrom === null) setEditingId(cid); }}
