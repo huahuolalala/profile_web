@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/cloudwego/hertz v0.10.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/hertz-contrib/cors v0.1.0
 	golang.org/x/crypto v0.54.0
 	modernc.org/sqlite v1.54.0
 )
