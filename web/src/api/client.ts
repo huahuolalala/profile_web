@@ -38,7 +38,7 @@ export async function api<T>(path: string, options?: { method?: string; body?: u
   return data as T;
 }
 
-/** SQLite CURRENT_TIMESTAMP 是 UTC 的 "YYYY-MM-DD HH:MM:SS"，转成毫秒时间戳 */
+/** SQLite 的 updated_at 经驱动返回 RFC3339（"YYYY-MM-DDTHH:MM:SSZ"）；裸 CURRENT_TIMESTAMP 串（"YYYY-MM-DD HH:MM:SS"，UTC）也兼容 */
 export function parseServerTime(s: string): number {
-  return new Date(s.replace(' ', 'T') + 'Z').getTime();
+  return s.includes('T') ? Date.parse(s) : new Date(s.replace(' ', 'T') + 'Z').getTime();
 }
