@@ -4,6 +4,8 @@ import { api, parseServerTime } from '../api/client';
 import CanvasView from '../components/CanvasView';
 import CardView from '../components/CardView';
 import EdgesLayer from '../components/EdgesLayer';
+import LayersPanel from '../components/LayersPanel';
+import Minimap from '../components/Minimap';
 import { editorReducer, initEditor, loadLocal, saveLocal, uid, type EditorDoc } from '../editor/store';
 import { toWorld, zoomAt, type Viewport } from '../editor/transform';
 import { canRedo, canUndo } from '../editor/undostack';
@@ -122,6 +124,10 @@ export default function Editor() {
 
   const zoomBy = (f: number) => setViewport((v) => zoomAt(v, stageSize.w / 2, stageSize.h / 2, f));
 
+  const jumpTo = (wx: number, wy: number) => {
+    setViewport((v) => ({ ...v, x: stageSize.w / 2 - wx * v.z, y: stageSize.h / 2 - wy * v.z }));
+  };
+
   const addCard = () => {
     const c = toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
     const card: Card = {
@@ -150,7 +156,20 @@ export default function Editor() {
         <button onClick={() => void syncNow()}>保存</button>
         <span className={`save-state save-${saveState}`}>{SAVE_TEXT[saveState]}</span>
       </div>
-      <div className="stage" ref={stageRef}>
+      <div className="editor-main">
+        <LayersPanel
+          cards={doc.cards}
+          selectedId={selectedId}
+          onJump={(cid) => {
+            const c = doc.cards.find((x) => x.id === cid);
+            if (c) { jumpTo(c.x + c.w / 2, c.y + 100); setSelectedId(cid); }
+          }}
+          onAdd={addCard}
+          onRename={(cid, t) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, title: t }); }}
+          onToggle={(cid) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, visible: !c.visible }); }}
+          onDelete={(cid) => { dispatch({ type: 'card/delete', id: cid }); if (selectedId === cid) setSelectedId(null); }}
+        />
+        <div className="stage" ref={stageRef}>
         <CanvasView
           viewport={viewport}
           onViewport={setViewport}
@@ -180,12 +199,14 @@ export default function Editor() {
             />
           ))}
         </CanvasView>
+        <Minimap cards={doc.cards} heights={heights} viewport={viewport} stageW={stageSize.w} stageH={stageSize.h} onJump={jumpTo} />
         <div className="zoom-bar">
           <button onClick={() => zoomBy(1 / 1.2)}>−</button>
           <span>{Math.round(viewport.z * 100)}%</span>
           <button onClick={() => zoomBy(1.2)}>＋</button>
           <button title="复位视图" onClick={() => setViewport({ x: 200, y: 80, z: 1 })}>⤢</button>
         </div>
+      </div>
       </div>
     </div>
   );
