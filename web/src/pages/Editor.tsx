@@ -44,14 +44,20 @@ export default function Editor() {
   // 加载：本地缓存与后端取较新者（后端为容灾备份）
   useEffect(() => {
     void (async () => {
-      const { resume } = await api<{ resume: Resume }>(`/api/resumes/${id}`);
-      const local = loadLocal(id);
-      const serverDoc: EditorDoc = { title: resume.title, cards: resume.cards, edges: resume.edges };
-      const useLocal = !!local && Date.parse(local.savedAt) > parseServerTime(resume.updatedAt);
-      dispatch({ type: 'doc/replace', doc: useLocal ? local.doc : serverDoc });
-      setLoaded(true);
+      try {
+        const { resume } = await api<{ resume: Resume }>(`/api/resumes/${id}`);
+        const local = loadLocal(id);
+        const serverDoc: EditorDoc = { title: resume.title, cards: resume.cards, edges: resume.edges };
+        const useLocal = !!local && Date.parse(local.savedAt) > parseServerTime(resume.updatedAt);
+        // doc/load：重置历史，加载不应成为可撤销的一步
+        dispatch({ type: 'doc/load', doc: useLocal ? local.doc : serverDoc });
+        setLoaded(true);
+      } catch (e) {
+        alert('简历加载失败：' + (e as Error).message);
+        nav('/');
+      }
     })();
-  }, [id]);
+  }, [id, nav]);
 
   // 本地缓存：每次变更立即写
   useEffect(() => {

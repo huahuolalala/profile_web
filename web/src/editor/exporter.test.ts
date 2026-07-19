@@ -44,4 +44,12 @@ describe('exportHTML', () => {
   it('标题与文件名语义', () => {
     expect(html).toContain('<title>我的简历</title>');
   });
+  it('img src 转义双引号，防属性注入', () => {
+    const evil: Card[] = [
+      { ...mk('x', 0, 0), blocks: [{ type: 'image', src: 'data:x" onerror="alert(1)' }] },
+    ];
+    const out = exportHTML('t', evil);
+    expect(out).not.toContain('" onerror="');
+    expect(out).toContain('src="data:x&quot; onerror=&quot;alert(1)"');
+  });
 });

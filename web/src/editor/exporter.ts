@@ -28,7 +28,7 @@ function blockHTML(b: Block): string {
     case 'tags':
       return `<div class="tags">${b.items.map((i) => `<span class="tag">${esc(i)}</span>`).join('')}</div>`;
     case 'image':
-      return b.src ? `<img src="${b.src}" alt="" />` : '';
+      return b.src ? `<img src="${esc(b.src)}" alt="" />` : '';
   }
 }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { canUndo } from './undostack';
 import { docReducer, editorReducer, initEditor, type EditorDoc } from './store';
 import type { Card } from '../types';
 
@@ -37,5 +38,17 @@ describe('editorReducer 历史', () => {
     expect(s.present.title).toBe('t');
     s = editorReducer(s, { type: 'history/redo' });
     expect(s.present.title).toBe('new');
+  });
+  it('doc/load 重置历史：加载后不可撤销（回归：撤销曾清空刚加载的简历）', () => {
+    const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
+    const s = editorReducer(initEditor(EMPTY), { type: 'doc/load', doc });
+    expect(canUndo(s)).toBe(false);
+    expect(s.present).toBe(doc);
+  });
+  it('doc/replace 仍然入栈，可撤销（导入路径）', () => {
+    const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
+    const s = editorReducer(initEditor(EMPTY), { type: 'doc/replace', doc });
+    expect(canUndo(s)).toBe(true);
+    expect(s.present).toBe(doc);
   });
 });

@@ -8,6 +8,7 @@ export interface EditorDoc {
 }
 
 export type DocAction =
+  | { type: 'doc/load'; doc: EditorDoc }
   | { type: 'doc/replace'; doc: EditorDoc }
   | { type: 'title/set'; title: string }
   | { type: 'card/move'; id: string; x: number; y: number }
@@ -19,6 +20,7 @@ export type DocAction =
 
 export function docReducer(doc: EditorDoc, a: DocAction): EditorDoc {
   switch (a.type) {
+    case 'doc/load':
     case 'doc/replace':
       return a.doc;
     case 'title/set':
@@ -48,6 +50,8 @@ export type EditorState = History<EditorDoc>;
 export function editorReducer(state: EditorState, a: EditorAction): EditorState {
   if (a.type === 'history/undo') return hUndo(state);
   if (a.type === 'history/redo') return hRedo(state);
+  // 加载完成替换文档：重置历史而非入栈，避免撤销把刚加载的简历清空
+  if (a.type === 'doc/load') return initHistory(a.doc);
   return push(state, docReducer(state.present, a));
 }
 

@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/hertz-contrib/cors"
 
 	"profile_web/server/internal/auth"
@@ -40,7 +44,18 @@ func main() {
 
 	// 生产形态：前端构建产物存在时由 Hertz 托管
 	if _, err := os.Stat("../web/dist"); err == nil {
-		h.Static("/", "../web/dist")
+		// PathNotFound：静态文件未命中时，/api 回 JSON 404，其余回 index.html 交给前端路由（SPA 回退）
+		h.StaticFS("/", &app.FS{
+			Root:       "../web/dist",
+			IndexNames: []string{"index.html"},
+			PathNotFound: func(_ context.Context, c *app.RequestContext) {
+				if strings.HasPrefix(string(c.Request.URI().Path()), "/api") {
+					c.JSON(consts.StatusNotFound, map[string]string{"code": "not_found", "message": "接口不存在"})
+					return
+				}
+				c.File("../web/dist/index.html")
+			},
+		})
 	}
 
 	h.Spin()
