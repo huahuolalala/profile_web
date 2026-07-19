@@ -14,6 +14,7 @@ type block map[string]any
 type card struct {
 	id     string
 	title  string
+	typ    string // standard | note | quote | link | stat | todo
 	theme  string
 	x, y   float64
 	blocks []block
@@ -153,21 +154,48 @@ var sampleCards = []card{
 		},
 	},
 	{
-		id: "sc-motto", title: "座右铭", theme: "darkblue", x: 0, y: 1150,
+		id: "sc-motto", title: "林晚晴", typ: "quote", theme: "darkblue", x: 0, y: 1150,
 		blocks: []block{
 			text("慢慢来，比较快。"),
+			text("写在每一场分享的最后"),
 		},
 	},
 	{
-		id: "sc-intj", title: "便签 · 性格", theme: "white", x: 330, y: 1150,
+		id: "sc-intj", title: "便签 · 性格", typ: "note", theme: "white", x: 330, y: 1150,
 		blocks: []block{
 			tags("INTJ", "晨型人", "纸质手账党"),
+			text("灵感来了先记在这张便签上。"),
 		},
 	},
 	{
-		id: "sc-agent", title: "便签 · 正在探索", theme: "white", x: 660, y: 1150,
+		id: "sc-agent", title: "便签 · 正在探索", typ: "note", theme: "yellow", x: 660, y: 1150,
 		blocks: []block{
 			tags("Agent Native", "本地 LLM", "可编程简历"),
+		},
+	},
+	{
+		id: "sc-stat", title: "内测 6 个月留存", typ: "stat", theme: "purple", x: 0, y: 1420,
+		blocks: []block{
+			text("41%"),
+			text("ColaOS 内测，口碑获客为主"),
+		},
+	},
+	{
+		id: "sc-todo", title: "本周画布任务", typ: "todo", theme: "white", x: 330, y: 1420,
+		blocks: []block{
+			block{"type": "todo", "items": []block{
+				{"text": "把项目卡片拖成故事线", "done": true},
+				{"text": "给时间线补上 2024 的里程碑", "done": false},
+				{"text": "导出 HTML 发给导师看", "done": false},
+				{"text": "让 AI 按 DSL 再生成两张", "done": false},
+			}},
+		},
+	},
+	{
+		id: "sc-portfolio", title: "作品集 · 全部案例", typ: "link", theme: "blue", x: 660, y: 1420,
+		blocks: []block{
+			text("linwanqing.design"),
+			text("完整案例、文章与演讲回放都在个人主页。"),
 		},
 	},
 }
@@ -181,6 +209,7 @@ var sampleEdges = []edge{
 	{id: "se-6", from: "sc-story", to: "sc-views"},
 	{id: "se-7", from: "sc-red", to: "sc-views"},
 	{id: "se-8", from: "sc-ai", to: "sc-colaos"},
+	{id: "se-9", from: "sc-colaos", to: "sc-stat"},
 }
 
 // CreateSampleResume 为新用户插入一份样例简历（15 张卡片、8 条连线）。
@@ -220,9 +249,13 @@ func CreateSampleResume(ctx context.Context, d *sql.DB, userID int64) error {
 		if err != nil {
 			return err
 		}
+		typ := c.typ
+		if typ == "" {
+			typ = "standard"
+		}
 		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO cards (id, resume_id, title, theme, x, y, w, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?)",
-			c.id, resumeID, c.title, c.theme, c.x, c.y, cardW, sortOf[c.id], 1, string(content)); err != nil {
+			"INSERT INTO cards (id, resume_id, title, card_type, theme, x, y, w, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+			c.id, resumeID, c.title, typ, c.theme, c.x, c.y, cardW, sortOf[c.id], 1, string(content)); err != nil {
 			return err
 		}
 	}

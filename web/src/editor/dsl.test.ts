@@ -66,7 +66,7 @@ describe('dslToCards', () => {
     const r = parseDSL(VALID);
     if (!r.ok) throw new Error('unreachable');
     const existing: Card[] = [
-      { id: 'old', title: '旧', theme: 'white', x: 0, y: 1000, w: CARD_W, visible: true, blocks: [] },
+      { id: 'old', title: '旧', type: 'standard', theme: 'white', x: 0, y: 1000, w: CARD_W, visible: true, blocks: [] },
     ];
     const { cards, edges } = dslToCards(r.doc, existing);
     expect(cards).toHaveLength(4);
@@ -106,5 +106,49 @@ describe('cardsToDSL 与 parseDSL 互逆', () => {
       expect(r2.doc.cards.map((c) => c.title)).toEqual(['个人信息', '技能', '经历', '项目']);
       expect(r2.doc.edges).toEqual([{ from: 0, to: 1 }]);
     }
+  });
+});
+
+
+describe('卡片类型与 todo 块', () => {
+  it('合法 type 与 todo 块解析成功，dslToCards 透传 type', () => {
+    const doc = JSON.stringify({
+      version: 1,
+      cards: [
+        { title: '座右铭', type: 'quote', theme: 'darkblue', blocks: [{ type: 'text', text: '慢慢来，比较快' }] },
+        { title: '本周待办', type: 'todo', blocks: [{ type: 'todo', items: [{ text: '写周报', done: false }, { text: '健身', done: true }] }] },
+      ],
+    });
+    const r = parseDSL(doc);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const { cards } = dslToCards(r.doc, []);
+    expect(cards[0].type).toBe('quote');
+    expect(cards[1].type).toBe('todo');
+    const tb = cards[1].blocks[0];
+    expect(tb.type).toBe('todo');
+    if (tb.type === 'todo') expect(tb.items[1].done).toBe(true);
+    // roundtrip 保留 type
+    const r2 = parseDSL(cardsToDSL(cards, []));
+    expect(r2.ok).toBe(true);
+    if (r2.ok) expect(r2.doc.cards[0].type).toBe('quote');
+  });
+
+  it('非法 type 报中文错误', () => {
+    const r = parseDSL('{"version":1,"cards":[{"title":"a","type":"fancy","blocks":[]}]}');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('type');
+  });
+
+  it('缺省 type 为 standard', () => {
+    const r = parseDSL('{"version":1,"cards":[{"title":"a","blocks":[]}]}');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(dslToCards(r.doc, []).cards[0].type).toBe('standard');
+  });
+
+  it('todo 块形状校验', () => {
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[{"type":"todo","items":[{"text":"x"}]}]}]}').ok).toBe(false);
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[{"type":"todo","items":["x"]}]}]}').ok).toBe(false);
   });
 });

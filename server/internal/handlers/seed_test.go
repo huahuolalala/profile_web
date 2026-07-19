@@ -42,11 +42,11 @@ func TestRegisterSeedsSampleResume(t *testing.T) {
 		} `json:"resume"`
 	}
 	_ = json.Unmarshal(w.Result().Body(), &got)
-	if len(got.Resume.Cards) != 15 {
-		t.Fatalf("want 15 sample cards, got %d", len(got.Resume.Cards))
+	if len(got.Resume.Cards) != 18 {
+		t.Fatalf("want 18 sample cards, got %d", len(got.Resume.Cards))
 	}
-	if len(got.Resume.Edges) != 8 {
-		t.Fatalf("want 8 sample edges, got %d", len(got.Resume.Edges))
+	if len(got.Resume.Edges) != 9 {
+		t.Fatalf("want 9 sample edges, got %d", len(got.Resume.Edges))
 	}
 	themes := map[string]bool{}
 	for _, c := range got.Resume.Cards {

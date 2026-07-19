@@ -184,7 +184,7 @@ export default function Editor() {
   const addCard = () => {
     const c = toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
     const card: Card = {
-      id: uid(), title: '新卡片', theme: 'white',
+      id: uid(), title: '新卡片', type: 'standard', theme: 'white',
       x: c.x - 130, y: c.y - 100, w: 260, visible: true,
       blocks: [{ type: 'text', text: '双击编辑内容' }],
     };

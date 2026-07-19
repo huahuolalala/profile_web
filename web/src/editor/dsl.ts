@@ -1,4 +1,4 @@
-import type { Block, Card, CardTheme, Edge } from '../types';
+import { CARD_TYPES, type Block, type Card, type CardTheme, type CardType, type Edge, type TodoItem } from '../types';
 
 export const CARD_W = 260;
 const GRID_COLS = 3;
@@ -7,6 +7,7 @@ const EST_CARD_H = 400; // 估算已有卡片高度（真实高度由 DOM 决定
 
 export interface DSLCard {
   title: string;
+  type?: CardType;
   theme?: CardTheme;
   blocks: Block[];
   x?: number;
@@ -23,6 +24,14 @@ export type ParseResult = { ok: true; doc: DSLDoc } | { ok: false; error: string
 
 const THEMES: CardTheme[] = ['white', 'yellow', 'purple', 'teal', 'pink', 'blue', 'darkblue'];
 
+function isTodoItem(v: unknown): v is TodoItem {
+  return (
+    typeof v === 'object' && v !== null &&
+    typeof (v as { text?: unknown }).text === 'string' &&
+    typeof (v as { done?: unknown }).done === 'boolean'
+  );
+}
+
 function isBlock(b: unknown): b is Block {
   if (typeof b !== 'object' || b === null) return false;
   const t = (b as { type?: unknown }).type;
@@ -32,6 +41,10 @@ function isBlock(b: unknown): b is Block {
     return Array.isArray(items) && items.every((i) => typeof i === 'string');
   }
   if (t === 'image') return typeof (b as { src?: unknown }).src === 'string';
+  if (t === 'todo') {
+    const items = (b as { items?: unknown }).items;
+    return Array.isArray(items) && items.every(isTodoItem);
+  }
   return false;
 }
 
@@ -58,8 +71,11 @@ export function parseDSL(text: string): ParseResult {
     if (c.theme !== undefined && !THEMES.includes(c.theme)) {
       return { ok: false, error: `cards[${i}].theme 非法：${String(c.theme)}（可选：${THEMES.join('/')}）` };
     }
+    if (c.type !== undefined && !CARD_TYPES.includes(c.type)) {
+      return { ok: false, error: `cards[${i}].type 非法：${String(c.type)}（可选：${CARD_TYPES.join('/')}）` };
+    }
     if (!Array.isArray(c.blocks) || !c.blocks.every(isBlock)) {
-      return { ok: false, error: `cards[${i}].blocks 非法（type 仅支持 text/list/tags/image）` };
+      return { ok: false, error: `cards[${i}].blocks 非法（type 仅支持 text/list/tags/image/todo）` };
     }
     if ((c.x !== undefined && typeof c.x !== 'number') || (c.y !== undefined && typeof c.y !== 'number')) {
       return { ok: false, error: `cards[${i}].x/y 必须是数字` };
@@ -87,6 +103,7 @@ function estimateHeight(c: DSLCard): number {
     if (b.type === 'text') h += 32;
     else if (b.type === 'list') h += 24 + b.items.length * 22;
     else if (b.type === 'tags') h += 48;
+    else if (b.type === 'todo') h += 32 + b.items.length * 26;
     else h += 140;
   }
   return h;
@@ -105,6 +122,7 @@ export function dslToCards(doc: DSLDoc, existing: Card[]): { cards: Card[]; edge
   const cards: Card[] = doc.cards.map((c, i) => ({
     id: crypto.randomUUID(),
     title: c.title,
+    type: c.type ?? 'standard',
     theme: c.theme ?? 'white',
     x: c.x ?? (i % GRID_COLS) * (CARD_W + GAP),
     y: c.y ?? rowTops[Math.floor(i / GRID_COLS)],
@@ -127,6 +145,7 @@ export function cardsToDSL(cards: Card[], edges: Edge[]): string {
     version: 1,
     cards: cards.map((c) => ({
       title: c.title,
+      type: c.type,
       theme: c.theme,
       blocks: c.blocks,
       x: Math.round(c.x),

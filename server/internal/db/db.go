@@ -44,6 +44,7 @@ func Migrate(d *sql.DB) error {
 			id TEXT PRIMARY KEY,
 			resume_id INTEGER NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
 			title TEXT NOT NULL,
+			card_type TEXT NOT NULL DEFAULT 'standard',
 			theme TEXT NOT NULL,
 			x REAL, y REAL, w REAL,
 			sort_order INTEGER,
@@ -61,5 +62,7 @@ func Migrate(d *sql.DB) error {
 			return err
 		}
 	}
+	// 旧库迁移：补 card_type 列（已存在时忽略错误）
+	d.Exec("ALTER TABLE cards ADD COLUMN card_type TEXT NOT NULL DEFAULT 'standard'")
 	return nil
 }

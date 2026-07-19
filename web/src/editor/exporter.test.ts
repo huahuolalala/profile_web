@@ -3,7 +3,7 @@ import { exportHTML, sortForExport } from './exporter';
 import type { Card } from '../types';
 
 const mk = (id: string, x: number, y: number, visible = true): Card => ({
-  id, title: id, theme: 'white', x, y, w: 260, visible, blocks: [],
+  id, title: id, type: 'standard' as const, theme: 'white', x, y, w: 260, visible, blocks: [],
 });
 
 describe('sortForExport', () => {
@@ -16,7 +16,7 @@ describe('sortForExport', () => {
 describe('exportHTML', () => {
   const cards: Card[] = [
     {
-      id: 'c1', title: '个人信息', theme: 'purple', x: 0, y: 0, w: 260, visible: true,
+      id: 'c1', title: '个人信息', type: 'standard', theme: 'purple', x: 0, y: 0, w: 260, visible: true,
       blocks: [
         { type: 'text', text: '张三 <脚本>' },
         { type: 'list', items: ['5 年经验', 'base 上海'] },
@@ -51,5 +51,55 @@ describe('exportHTML', () => {
     const out = exportHTML('t', evil);
     expect(out).not.toContain('" onerror="');
     expect(out).toContain('src="data:x&quot; onerror=&quot;alert(1)"');
+  });
+});
+
+
+describe('卡片类型导出渲染', () => {
+  const base = { x: 0, y: 0, w: 260, visible: true, theme: 'yellow' as const };
+
+  it('quote 类型输出大字引文与署名', () => {
+    const cards: Card[] = [
+      { ...base, id: 'q', title: '林晚晴', type: 'quote', blocks: [{ type: 'text', text: '慢慢来，比较快' }] },
+    ];
+    const html = exportHTML('t', cards);
+    expect(html).toContain('class="card quote"');
+    expect(html).toContain('慢慢来，比较快');
+    expect(html).toContain('qby');
+  });
+
+  it('stat 类型输出大数字', () => {
+    const cards: Card[] = [
+      { ...base, id: 's', title: '内测留存', type: 'stat', blocks: [{ type: 'text', text: '41%' }, { type: 'text', text: '6 个月' }] },
+    ];
+    const html = exportHTML('t', cards);
+    expect(html).toContain('class="card stat"');
+    expect(html).toContain('class="num">41%');
+  });
+
+  it('link 类型提取域名', () => {
+    const cards: Card[] = [
+      { ...base, id: 'l', title: '作品集', type: 'link', blocks: [{ type: 'text', text: 'https://www.linwanqing.design/work' }, { type: 'text', text: '全部作品' }] },
+    ];
+    const html = exportHTML('t', cards);
+    expect(html).toContain('class="domain">linwanqing.design');
+  });
+
+  it('todo 块输出勾选态', () => {
+    const cards: Card[] = [
+      { ...base, id: 't', title: '待办', type: 'todo', blocks: [{ type: 'todo', items: [{ text: '写周报', done: false }, { text: '健身', done: true }] }] },
+    ];
+    const html = exportHTML('t', cards);
+    expect(html).toContain('class="todo"');
+    expect(html).toContain('class="done"');
+  });
+
+  it('note 类型使用便签样式且无标题栏', () => {
+    const cards: Card[] = [
+      { ...base, id: 'n', title: '提醒', type: 'note', blocks: [{ type: 'text', text: '记得浇水' }] },
+    ];
+    const html = exportHTML('t', cards);
+    expect(html).toContain('class="card note"');
+    expect(html).not.toContain('<h2>提醒</h2>');
   });
 });

@@ -1,7 +1,18 @@
 import { useState } from 'react';
-import type { Block, Card, CardTheme } from '../types';
+import { Article, ChartLineUp, Link as LinkIcon, ListChecks, Note, Plus, Quotes } from '@phosphor-icons/react';
+import type { Block, Card, CardTheme, CardType } from '../types';
+import { CARD_TYPE_LABEL, CARD_TYPES } from '../types';
 
 const THEMES: CardTheme[] = ['white', 'yellow', 'purple', 'teal', 'pink', 'blue', 'darkblue'];
+
+const TYPE_ICON: Record<CardType, React.ReactNode> = {
+  standard: <Article size={15} />,
+  note: <Note size={15} />,
+  quote: <Quotes size={15} />,
+  link: <LinkIcon size={15} />,
+  stat: <ChartLineUp size={15} />,
+  todo: <ListChecks size={15} />,
+};
 
 interface Props {
   card: Card;
@@ -11,9 +22,10 @@ interface Props {
 
 export default function CardEditor({ card, onSave, onCancel }: Props) {
   const [title, setTitle] = useState(card.title);
+  const [cardType, setCardType] = useState<CardType>(card.type);
   const [theme, setTheme] = useState<CardTheme>(card.theme);
   const [blocks, setBlocks] = useState<Block[]>(card.blocks);
-  // 列表/标签编辑期间保留原始输入串，保存时才拆分过滤（避免受控输入逐键还原吃掉回车/逗号）
+  // 列表/标签块编辑期间保留原始输入串，保存时才 split/filter（逐按键 filter 会吃掉回车和逗号）
   const [raw, setRaw] = useState<Record<number, string>>({});
 
   const setBlock = (i: number, b: Block) => setBlocks(blocks.map((x, j) => (j === i ? b : x)));
@@ -38,19 +50,31 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
   };
 
   const handleSave = () => {
-    const merged = blocks.map((b, i): Block => {
-      const r = raw[i];
-      if (r === undefined) return b;
-      if (b.type === 'list') return { type: 'list', items: r.split('\n').map((s) => s.trim()).filter((s) => s !== '') };
-      if (b.type === 'tags') return { type: 'tags', items: r.split(/[,，]/).map((s) => s.trim()).filter(Boolean) };
+    const finalBlocks = blocks.map((b, i) => {
+      if (raw[i] === undefined) return b;
+      if (b.type === 'list') return { type: 'list', items: raw[i].split('\n').map((s) => s.trim()).filter((s) => s !== '') } as Block;
+      if (b.type === 'tags') return { type: 'tags', items: raw[i].split(/[,，]/).map((s) => s.trim()).filter(Boolean) } as Block;
       return b;
     });
-    onSave({ ...card, title, theme, blocks: merged });
+    onSave({ ...card, title, type: cardType, theme, blocks: finalBlocks });
   };
 
   return (
     <div className="card-editor" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
       <input className="ce-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="卡片标题" />
+      <div className="ce-types">
+        {CARD_TYPES.map((t) => (
+          <button
+            key={t}
+            className={`ce-type ${t === cardType ? 'active' : ''}`}
+            onClick={() => setCardType(t)}
+            title={CARD_TYPE_LABEL[t]}
+          >
+            {TYPE_ICON[t]}
+            <span>{CARD_TYPE_LABEL[t]}</span>
+          </button>
+        ))}
+      </div>
       <div className="ce-themes">
         {THEMES.map((t) => (
           <button
@@ -88,6 +112,30 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
               <input type="file" accept="image/*" onChange={(e) => onImage(i, e.target.files?.[0])} />
             </div>
           )}
+          {b.type === 'todo' && (
+            <div className="ce-todo">
+              {b.items.map((it, j) => (
+                <div className="ce-todo-row" key={j}>
+                  <button
+                    className={`todo-check ${it.done ? 'done' : ''}`}
+                    title="切换完成状态"
+                    onClick={() => setBlock(i, { type: 'todo', items: b.items.map((x, k) => (k === j ? { ...x, done: !x.done } : x)) })}
+                  >
+                    {it.done ? '✓' : ''}
+                  </button>
+                  <input
+                    value={it.text}
+                    placeholder="待办事项"
+                    onChange={(e) => setBlock(i, { type: 'todo', items: b.items.map((x, k) => (k === j ? { ...x, text: e.target.value } : x)) })}
+                  />
+                  <button className="ce-todo-del" title="删除" onClick={() => setBlock(i, { type: 'todo', items: b.items.filter((_, k) => k !== j) })}>×</button>
+                </div>
+              ))}
+              <button className="ce-todo-add" onClick={() => setBlock(i, { type: 'todo', items: [...b.items, { text: '', done: false }] })}>
+                <Plus size={12} /> 加一条
+              </button>
+            </div>
+          )}
         </div>
       ))}
       <div className="ce-add">
@@ -95,6 +143,7 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
         <button onClick={() => addBlock({ type: 'list', items: [] })}>+列表</button>
         <button onClick={() => addBlock({ type: 'tags', items: [] })}>+标签</button>
         <button onClick={() => addBlock({ type: 'image', src: '' })}>+图片</button>
+        <button onClick={() => addBlock({ type: 'todo', items: [{ text: '', done: false }] })}>+清单</button>
       </div>
       <div className="ce-actions">
         <button className="btn-primary" onClick={handleSave}>保存</button>

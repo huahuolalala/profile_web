@@ -3,7 +3,7 @@ import { canUndo } from './undostack';
 import { docReducer, editorReducer, initEditor, type EditorDoc } from './store';
 import type { Card } from '../types';
 
-const card = (id: string): Card => ({ id, title: id, theme: 'white', x: 0, y: 0, w: 260, visible: true, blocks: [] });
+const card = (id: string): Card => ({ id, title: id, type: 'standard', theme: 'white', x: 0, y: 0, w: 260, visible: true, blocks: [] });
 
 const doc: EditorDoc = {
   title: 't',

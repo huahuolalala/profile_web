@@ -15,6 +15,7 @@ import (
 type cardPayload struct {
 	ID      string          `json:"id"`
 	Title   string          `json:"title"`
+	Type    string          `json:"type"`
 	Theme   string          `json:"theme"`
 	X       float64         `json:"x"`
 	Y       float64         `json:"y"`
@@ -114,7 +115,7 @@ func GetResume(d *sql.DB) app.HandlerFunc {
 			fail500(c)
 			return
 		}
-		rows, err := d.QueryContext(ctx, "SELECT id, title, theme, x, y, w, visible, content FROM cards WHERE resume_id=? ORDER BY sort_order", id)
+		rows, err := d.QueryContext(ctx, "SELECT id, title, card_type, theme, x, y, w, visible, content FROM cards WHERE resume_id=? ORDER BY sort_order", id)
 		if err != nil {
 			fail500(c)
 			return
@@ -124,12 +125,15 @@ func GetResume(d *sql.DB) app.HandlerFunc {
 			var cd cardPayload
 			var vis int
 			var content string
-			if err := rows.Scan(&cd.ID, &cd.Title, &cd.Theme, &cd.X, &cd.Y, &cd.W, &vis, &content); err != nil {
+			if err := rows.Scan(&cd.ID, &cd.Title, &cd.Type, &cd.Theme, &cd.X, &cd.Y, &cd.W, &vis, &content); err != nil {
 				rows.Close()
 				fail500(c)
 				return
 			}
 			cd.Visible = vis == 1
+			if cd.Type == "" {
+				cd.Type = "standard"
+			}
 			if content == "" {
 				content = "[]"
 			}
@@ -209,9 +213,13 @@ func SaveResume(d *sql.DB) app.HandlerFunc {
 			if cd.Visible {
 				vis = 1
 			}
+			cardType := cd.Type
+			if cardType == "" {
+				cardType = "standard"
+			}
 			if _, err := tx.ExecContext(ctx,
-				"INSERT INTO cards (id, resume_id, title, theme, x, y, w, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?)",
-				cd.ID, id, cd.Title, cd.Theme, cd.X, cd.Y, cd.W, sortOf[cd.ID], vis, string(cd.Blocks)); err != nil {
+				"INSERT INTO cards (id, resume_id, title, card_type, theme, x, y, w, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+				cd.ID, id, cd.Title, cardType, cd.Theme, cd.X, cd.Y, cd.W, sortOf[cd.ID], vis, string(cd.Blocks)); err != nil {
 				fail500(c)
 				return
 			}
