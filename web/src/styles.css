@@ -24,7 +24,7 @@ button {
 }
 button:hover { border-color: var(--accent); }
 button:disabled { opacity: 0.4; cursor: default; }
-button.active { background: var(--accent); border-color: var(--accent); color: #4a3600; }
+.topbar button.active { background: var(--accent); border-color: var(--accent); color: #4a3600; }
 input, textarea {
   font: inherit; color: inherit; background: #fff; border: 1px solid var(--border);
   border-radius: 8px; padding: 8px 10px; outline: none;
