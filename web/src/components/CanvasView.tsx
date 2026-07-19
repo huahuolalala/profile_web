@@ -8,6 +8,8 @@ interface Props {
   viewport: Viewport;
   onViewport: (v: Viewport) => void;
   onBackgroundClick: () => void;
+  /** 空白处双击：在该世界坐标新建卡片 */
+  onBackgroundDblClick: (wx: number, wy: number) => void;
   /** 框选进行中：广播当前世界坐标选框（供 Editor 计算命中并高亮） */
   onMarquee: (rect: Rect) => void;
   /** 框选结束：提交选中 */
@@ -15,7 +17,7 @@ interface Props {
   children: ReactNode;
 }
 
-export default function CanvasView({ viewport, onViewport, onBackgroundClick, onMarquee, onMarqueeEnd, children }: Props) {
+export default function CanvasView({ viewport, onViewport, onBackgroundClick, onBackgroundDblClick, onMarquee, onMarqueeEnd, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const pan = useRef<{ sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
   // 框选：记录世界坐标起点；state 存屏幕坐标选框用于绘制蓝框
@@ -77,6 +79,12 @@ export default function CanvasView({ viewport, onViewport, onBackgroundClick, on
     pan.current = null;
   };
 
+  const onDoubleClick = (e: React.MouseEvent) => {
+    const r = ref.current!.getBoundingClientRect();
+    const w = toWorld(viewport, e.clientX - r.left, e.clientY - r.top);
+    onBackgroundDblClick(w.x, w.y);
+  };
+
   return (
     <div
       ref={ref}
@@ -85,6 +93,7 @@ export default function CanvasView({ viewport, onViewport, onBackgroundClick, on
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onDoubleClick={onDoubleClick}
     >
       <div
         className="canvas-world"

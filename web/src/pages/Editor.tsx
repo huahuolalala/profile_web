@@ -227,8 +227,8 @@ export default function Editor() {
 
   const zoomBy = (f: number) => animateViewport(zoomAt(viewportRef.current, stageSize.w / 2, stageSize.h / 2, f));
 
-  const addCard = (type: CardType) => {
-    const c = toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
+  const addCard = (type: CardType, at?: { x: number; y: number }) => {
+    const c = at ?? toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
     const preset = CARD_PRESET[type];
     const card: Card = {
       id: uid(), title: preset.title, type, theme: 'white',
@@ -306,6 +306,7 @@ export default function Editor() {
             viewport={viewport}
             onViewport={onViewportManual}
             onBackgroundClick={() => { setSelectedIds([]); setEditingId(null); }}
+            onBackgroundDblClick={(wx, wy) => { if (connectFrom === null) addCard('standard', { x: wx, y: wy }); }}
             onMarquee={(rect) => setSelectedIds(marqueeHits(rect, docRef.current.cards, heightsRef.current))}
             onMarqueeEnd={(rect) => setSelectedIds(marqueeHits(rect, docRef.current.cards, heightsRef.current))}
           >
