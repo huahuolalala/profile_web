@@ -7,10 +7,14 @@ interface Props {
   card: Card;
   z: number;
   selected: boolean;
+  /** 多选整体拖拽时，跟随卡片的实时位置（世界坐标）；本卡自身拖拽也会收到，值一致不冲突 */
+  livePos?: { x: number; y: number };
   editing: boolean;
   connectMode: boolean;
+  /** 是否显示悬浮工具条（仅单选那张显示，多选时隐藏） */
+  showToolbar?: boolean;
   linked?: boolean;
-  onClick: (id: string) => void;
+  onClick: (id: string, additive: boolean) => void;
   onEdit: (id: string) => void;
   onDrag: (id: string, x: number, y: number) => void;
   onMoveEnd: (id: string, x: number, y: number) => void;
@@ -75,6 +79,7 @@ function Blocks({ card, onToggleTodo }: { card: Card; onToggleTodo?: (bi: number
 
 export default function CardView(p: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
 
   useEffect(() => {
     const el = ref.current!;
@@ -84,15 +89,32 @@ export default function CardView(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.card.id]);
 
+  // 多选整体拖拽时，本卡不是被直接拖的那张，则跟随 livePos 位移
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || dragging.current) return;
+    if (p.livePos) {
+      el.style.left = `${p.livePos.x}px`;
+      el.style.top = `${p.livePos.y}px`;
+    } else {
+      el.style.left = `${p.card.x}px`;
+      el.style.top = `${p.card.y}px`;
+    }
+  }, [p.livePos, p.card.x, p.card.y]);
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (p.editing) return;
     e.stopPropagation();
-    p.onClick(p.card.id);
+    p.onClick(p.card.id, e.shiftKey || e.metaKey);
+    // Shift/Cmd 点击只切换选中，不进入拖拽（避免误移）
+    if (e.shiftKey || e.metaKey) return;
     const el = ref.current!;
-    el.setPointerCapture(e.pointerId);
+    try { el.setPointerCapture(e.pointerId); } catch { /* 合成 pointer 可能不支持捕获，忽略 */ }
     const start = { cx: e.clientX, cy: e.clientY, x: p.card.x, y: p.card.y };
     let cur = { x: p.card.x, y: p.card.y };
     let moved = false;
+    dragging.current = true;
+    // 监听挂在 window：指针快速移出卡片或合成事件时仍能收到 move/up，落点不丢
     const move = (ev: PointerEvent) => {
       if (!moved) el.classList.add('dragging'); // 拿起手感：放大 + 投影加深
       cur = { x: start.x + (ev.clientX - start.cx) / p.z, y: start.y + (ev.clientY - start.cy) / p.z };
@@ -103,12 +125,13 @@ export default function CardView(p: Props) {
     };
     const up = () => {
       el.classList.remove('dragging');
-      el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerup', up);
+      dragging.current = false;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
       if (moved) p.onMoveEnd(p.card.id, Math.round(cur.x), Math.round(cur.y));
     };
-    el.addEventListener('pointermove', move);
-    el.addEventListener('pointerup', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   };
 
   const c = p.card;
@@ -138,7 +161,7 @@ export default function CardView(p: Props) {
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
     >
-      {p.selected && !p.editing && !p.connectMode && p.z >= 0.5 && (
+      {p.showToolbar && !p.editing && !p.connectMode && p.z >= 0.5 && (
         <div className="card-toolbar" onPointerDown={(e) => e.stopPropagation()}>
           <button title="编辑卡片" onClick={() => p.onEdit(c.id)}><PencilSimple size={13} weight="bold" /></button>
           <button title="从此卡片开始连线" onClick={() => p.onConnectFrom(c.id)}><LinkIcon size={13} weight="bold" /></button>

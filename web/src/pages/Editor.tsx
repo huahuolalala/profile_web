@@ -15,6 +15,7 @@ import TopBar, { type SaveState } from '../components/TopBar';
 import { cardsToDSL, dslToCards, parseDSL } from '../editor/dsl';
 import { exportHTML } from '../editor/exporter';
 import { editorReducer, initEditor, loadLocal, saveLocal, uid, type EditorDoc } from '../editor/store';
+import { marqueeHits } from '../editor/selection';
 import { toWorld, zoomAt, type Viewport } from '../editor/transform';
 import { canRedo, canUndo } from '../editor/undostack';
 import type { Block, Card, CardType, Resume } from '../types';
@@ -40,7 +41,9 @@ export default function Editor() {
 
   const [loaded, setLoaded] = useState(false);
   const [viewport, setViewport] = useState<Viewport>(HOME_VIEW);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedSet = new Set(selectedIds);
+  const primaryId = selectedIds.length === 1 ? selectedIds[0] : null;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null); // null=关闭；''=等源卡片；否则为源卡片 id
   const [heights, setHeights] = useState<Record<string, number>>({});
@@ -71,6 +74,13 @@ export default function Editor() {
   const dirtyRef = useRef(false);
   const docRef = useRef(doc);
   docRef.current = doc;
+  // 供无依赖的键盘监听读取最新选中/编辑态
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const editingRef = useRef(editingId);
+  editingRef.current = editingId;
+  const heightsRef = useRef(heights);
+  heightsRef.current = heights;
 
   // 视口弹簧动画（iOS/macOS 手感）：手动交互（滚轮/拖拽）直接驱动，程序化跳转走弹簧
   const viewportRef = useRef(viewport);
@@ -162,7 +172,7 @@ export default function Editor() {
     return () => ro.disconnect();
   }, [loaded]);
 
-  // 快捷键：Ctrl/Cmd+Z 撤销，+Shift 重做，Esc 退出编辑/连线/选中
+  // 快捷键：Ctrl/Cmd+Z 撤销，+Shift 重做，Delete 删选中，Esc 退出编辑/连线/选中
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -170,10 +180,16 @@ export default function Editor() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         dispatch({ type: e.shiftKey ? 'history/redo' : 'history/undo' });
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIdsRef.current.length > 0 && editingRef.current === null) {
+        e.preventDefault();
+        const ids = selectedIdsRef.current;
+        if (ids.length === 1) dispatch({ type: 'card/delete', id: ids[0] });
+        else dispatch({ type: 'cards/deleteMany', ids });
+        setSelectedIds([]);
       } else if (e.key === 'Escape') {
         setEditingId(null);
         setConnectFrom(null);
-        setSelectedId(null);
+        setSelectedIds([]);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -182,7 +198,7 @@ export default function Editor() {
 
   const updateCard = (card: Card) => dispatch({ type: 'card/update', card });
 
-  const onCardClick = (cid: string) => {
+  const onCardClick = (cid: string, additive = false) => {
     if (connectFrom !== null) {
       if (connectFrom === '') setConnectFrom(cid);
       else if (connectFrom !== cid) {
@@ -195,7 +211,13 @@ export default function Editor() {
       }
       return;
     }
-    setSelectedId(cid);
+    if (additive) {
+      // Shift/Cmd+点击：切换该卡片是否在选区内
+      setSelectedIds((ids) => (ids.includes(cid) ? ids.filter((x) => x !== cid) : [...ids, cid]));
+    } else if (!selectedSet.has(cid)) {
+      // 点击选区外的卡片：单选它；点击已在选区内的卡片不清空多选（便于整体拖拽）
+      setSelectedIds([cid]);
+    }
   };
 
   const jumpTo = (wx: number, wy: number) => {
@@ -214,7 +236,7 @@ export default function Editor() {
       blocks: preset.blocks,
     };
     dispatch({ type: 'card/add', card });
-    setSelectedId(card.id);
+    setSelectedIds([card.id]);
     setEditingId(card.id);
   };
 
@@ -269,21 +291,23 @@ export default function Editor() {
       <div className="editor-main">
         <LayersPanel
           cards={doc.cards}
-          selectedId={selectedId}
+          selectedId={primaryId}
           onJump={(cid) => {
             const c = doc.cards.find((x) => x.id === cid);
-            if (c) { jumpTo(c.x + c.w / 2, c.y + 100); setSelectedId(cid); }
+            if (c) { jumpTo(c.x + c.w / 2, c.y + 100); setSelectedIds([cid]); }
           }}
           onAdd={() => addCard('standard')}
           onRename={(cid, t) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, title: t }); }}
           onToggle={(cid) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, visible: !c.visible }); }}
-          onDelete={(cid) => { dispatch({ type: 'card/delete', id: cid }); if (selectedId === cid) setSelectedId(null); }}
+          onDelete={(cid) => { dispatch({ type: 'card/delete', id: cid }); setSelectedIds((ids) => ids.filter((x) => x !== cid)); }}
         />
         <div className="stage" ref={stageRef}>
           <CanvasView
             viewport={viewport}
             onViewport={onViewportManual}
-            onBackgroundClick={() => { setSelectedId(null); setEditingId(null); }}
+            onBackgroundClick={() => { setSelectedIds([]); setEditingId(null); }}
+            onMarquee={(rect) => setSelectedIds(marqueeHits(rect, docRef.current.cards, heightsRef.current))}
+            onMarqueeEnd={(rect) => setSelectedIds(marqueeHits(rect, docRef.current.cards, heightsRef.current))}
           >
             <EdgesLayer
               cards={doc.cards} edges={doc.edges} heights={heights} dragPos={dragPos}
@@ -296,22 +320,52 @@ export default function Editor() {
             {doc.cards.map((c) => (
               <CardView
                 key={c.id} card={c} z={viewport.z}
-                selected={c.id === selectedId}
+                selected={selectedSet.has(c.id)}
+                livePos={dragPos[c.id]}
                 editing={c.id === editingId}
                 connectMode={connectFrom !== null}
+                showToolbar={c.id === primaryId}
                 linked={!!edgeEnds && (edgeEnds[0] === c.id || edgeEnds[1] === c.id)}
                 onClick={onCardClick}
                 onEdit={(cid) => { if (connectFrom === null) setEditingId(cid); }}
-                onDrag={(cid, x, y) => setDragPos((m) => ({ ...m, [cid]: { x, y } }))}
+                onDrag={(cid, x, y) => {
+                  // 多选整体拖拽：以被拖卡片相对原位的偏移，同步广播其余选中卡片
+                  const ids = selectedIdsRef.current;
+                  if (ids.length > 1 && ids.includes(cid)) {
+                    const orig = docRef.current.cards.find((k) => k.id === cid);
+                    if (!orig) return;
+                    const dx = x - orig.x, dy = y - orig.y;
+                    setDragPos(() => {
+                      const n: Record<string, { x: number; y: number }> = {};
+                      for (const k of docRef.current.cards) {
+                        if (ids.includes(k.id)) n[k.id] = { x: k.x + dx, y: k.y + dy };
+                      }
+                      return n;
+                    });
+                  } else {
+                    setDragPos((m) => ({ ...m, [cid]: { x, y } }));
+                  }
+                }}
                 onMoveEnd={(cid, x, y) => {
-                  setDragPos((m) => { const n = { ...m }; delete n[cid]; return n; });
-                  dispatch({ type: 'card/move', id: cid, x, y });
+                  const ids = selectedIdsRef.current;
+                  setDragPos({});
+                  if (ids.length > 1 && ids.includes(cid)) {
+                    const orig = docRef.current.cards.find((k) => k.id === cid);
+                    if (!orig) return;
+                    const dx = x - orig.x, dy = y - orig.y;
+                    const moves = docRef.current.cards
+                      .filter((k) => ids.includes(k.id))
+                      .map((k) => ({ id: k.id, x: Math.round(k.x + dx), y: Math.round(k.y + dy) }));
+                    dispatch({ type: 'cards/moveMany', moves });
+                  } else {
+                    dispatch({ type: 'card/move', id: cid, x, y });
+                  }
                 }}
                 onMeasure={(cid, h) => setHeights((m) => (m[cid] === h ? m : { ...m, [cid]: h }))}
                 onUpdate={updateCard}
                 onCloseEdit={() => setEditingId(null)}
                 onConnectFrom={(cid) => setConnectFrom(cid)}
-                onDelete={(did) => { dispatch({ type: 'card/delete', id: did }); if (selectedId === did) setSelectedId(null); }}
+                onDelete={(did) => { dispatch({ type: 'card/delete', id: did }); setSelectedIds((ids) => ids.filter((x) => x !== did)); }}
               />
             ))}
           </CanvasView>
