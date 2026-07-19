@@ -47,7 +47,11 @@ export function parseDSL(text: string): ParseResult {
   if (doc.version !== 1) return { ok: false, error: 'version 必须为 1' };
   if (!Array.isArray(doc.cards)) return { ok: false, error: 'cards 必须是数组' };
   for (let i = 0; i < doc.cards.length; i++) {
-    const c = doc.cards[i] as Partial<DSLCard>;
+    const rawCard: unknown = doc.cards[i];
+    if (typeof rawCard !== 'object' || rawCard === null) {
+      return { ok: false, error: `cards[${i}] 必须是对象` };
+    }
+    const c = rawCard as Partial<DSLCard>;
     if (typeof c.title !== 'string' || c.title === '') {
       return { ok: false, error: `cards[${i}].title 缺失或不是非空字符串` };
     }
@@ -57,14 +61,21 @@ export function parseDSL(text: string): ParseResult {
     if (!Array.isArray(c.blocks) || !c.blocks.every(isBlock)) {
       return { ok: false, error: `cards[${i}].blocks 非法（type 仅支持 text/list/tags/image）` };
     }
+    if ((c.x !== undefined && typeof c.x !== 'number') || (c.y !== undefined && typeof c.y !== 'number')) {
+      return { ok: false, error: `cards[${i}].x/y 必须是数字` };
+    }
   }
   if (doc.edges !== undefined) {
     if (!Array.isArray(doc.edges)) return { ok: false, error: 'edges 必须是数组' };
     for (const e of doc.edges) {
-      const bad =
-        typeof e?.from !== 'number' || typeof e?.to !== 'number' ||
-        e.from < 0 || e.to < 0 || e.from >= doc.cards.length || e.to >= doc.cards.length;
-      if (bad) return { ok: false, error: `edges 引用越界：from=${String(e?.from)} to=${String(e?.to)}` };
+      if (typeof e?.from !== 'number' || typeof e?.to !== 'number') {
+        return { ok: false, error: `edges 引用越界：from=${String(e?.from)} to=${String(e?.to)}` };
+      }
+      if (!Number.isInteger(e.from) || !Number.isInteger(e.to)) {
+        return { ok: false, error: `edges 下标必须是整数：from=${String(e.from)} to=${String(e.to)}` };
+      }
+      const bad = e.from < 0 || e.to < 0 || e.from >= doc.cards.length || e.to >= doc.cards.length;
+      if (bad) return { ok: false, error: `edges 引用越界：from=${String(e.from)} to=${String(e.to)}` };
     }
   }
   return { ok: true, doc: doc as DSLDoc };

@@ -37,6 +37,28 @@ describe('parseDSL', () => {
     const r = parseDSL('{"version":1,"cards":[{"title":"a","blocks":[]}],"edges":[{"from":0,"to":5}]}');
     expect(r.ok).toBe(false);
   });
+  it('cards 元素为 null / 非对象时不崩溃', () => {
+    let r!: ReturnType<typeof parseDSL>;
+    expect(() => {
+      r = parseDSL('{"version":1,"cards":[null]}');
+    }).not.toThrow();
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('必须是对象');
+  });
+  it('edges 下标必须是整数', () => {
+    let r!: ReturnType<typeof parseDSL>;
+    expect(() => {
+      r = parseDSL('{"version":1,"cards":[{"title":"a","blocks":[]}],"edges":[{"from":0.5,"to":0}]}');
+    }).not.toThrow();
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('整数');
+  });
+  it('x/y 存在时必须是数字', () => {
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"x":"7"}]}').ok).toBe(false);
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"y":null}]}').ok).toBe(false);
+    const r = parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"x":"7"}]}');
+    if (!r.ok) expect(r.error).toContain('x/y');
+  });
 });
 
 describe('dslToCards', () => {

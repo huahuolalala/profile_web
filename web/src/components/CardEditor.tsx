@@ -13,6 +13,8 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
   const [title, setTitle] = useState(card.title);
   const [theme, setTheme] = useState<CardTheme>(card.theme);
   const [blocks, setBlocks] = useState<Block[]>(card.blocks);
+  // 列表/标签编辑期间保留原始输入串，保存时才拆分过滤（避免受控输入逐键还原吃掉回车/逗号）
+  const [raw, setRaw] = useState<Record<number, string>>({});
 
   const setBlock = (i: number, b: Block) => setBlocks(blocks.map((x, j) => (j === i ? b : x)));
   const delBlock = (i: number) => setBlocks(blocks.filter((_, j) => j !== i));
@@ -21,8 +23,19 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
   const onImage = (i: number, file: File | undefined) => {
     if (!file) return;
     const r = new FileReader();
-    r.onload = () => setBlock(i, { type: 'image', src: String(r.result) });
+    r.onload = () => setBlocks((bs) => bs.map((x, j) => (j === i ? { type: 'image', src: String(r.result) } : x)));
     r.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    const merged = blocks.map((b, i): Block => {
+      const r = raw[i];
+      if (r === undefined) return b;
+      if (b.type === 'list') return { type: 'list', items: r.split('\n').map((s) => s.trim()).filter((s) => s !== '') };
+      if (b.type === 'tags') return { type: 'tags', items: r.split(/[,，]/).map((s) => s.trim()).filter(Boolean) };
+      return b;
+    });
+    onSave({ ...card, title, theme, blocks: merged });
   };
 
   return (
@@ -46,17 +59,17 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
           )}
           {b.type === 'list' && (
             <textarea
-              value={b.items.join('\n')}
+              value={raw[i] ?? b.items.join('\n')}
               rows={Math.max(3, b.items.length)}
               placeholder="每行一条"
-              onChange={(e) => setBlock(i, { type: 'list', items: e.target.value.split('\n').filter((s) => s.trim() !== '') })}
+              onChange={(e) => setRaw({ ...raw, [i]: e.target.value })}
             />
           )}
           {b.type === 'tags' && (
             <input
-              value={b.items.join(', ')}
+              value={raw[i] ?? b.items.join(', ')}
               placeholder="逗号分隔多个标签"
-              onChange={(e) => setBlock(i, { type: 'tags', items: e.target.value.split(/[,，]/).map((s) => s.trim()).filter(Boolean) })}
+              onChange={(e) => setRaw({ ...raw, [i]: e.target.value })}
             />
           )}
           {b.type === 'image' && (
@@ -74,7 +87,7 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
         <button onClick={() => addBlock({ type: 'image', src: '' })}>+图片</button>
       </div>
       <div className="ce-actions">
-        <button className="btn-primary" onClick={() => onSave({ ...card, title, theme, blocks })}>保存</button>
+        <button className="btn-primary" onClick={handleSave}>保存</button>
         <button onClick={onCancel}>取消</button>
       </div>
     </div>
