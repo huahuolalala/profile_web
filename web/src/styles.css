@@ -531,6 +531,13 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .theme-blue .note-tape { --tape: rgba(59, 130, 196, 0.35); }
 .theme-darkblue .note-tape { --tape: rgba(32, 53, 92, 0.4); }
 .note-body { padding-top: 18px; font-size: 13.5px; }
+/* 便签纸色随主题（默认黄色贴纸） */
+.theme-purple.type-note { background: linear-gradient(175deg, #f3edfb, #ece1f7); }
+.theme-teal.type-note { background: linear-gradient(175deg, #e3f4f0, #d6eee8); }
+.theme-pink.type-note { background: linear-gradient(175deg, #fceaf1, #f9dfe9); }
+.theme-blue.type-note { background: linear-gradient(175deg, #e7f0fa, #dce9f6); }
+.theme-darkblue.type-note { background: linear-gradient(175deg, #e6eaf3, #d9e0ee); }
+.theme-white.type-note { background: linear-gradient(175deg, #fffef8, #faf7ea); }
 
 /* --- 引言 quote --- */
 .quote-face { padding: 20px 18px 16px; position: relative; }
@@ -646,3 +653,10 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
   border-color: #7c5cbf;
   box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.22), var(--shadow-lg);
 }
+
+/* ===== 画布品牌水印 ===== */
+.canvas-watermark {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  pointer-events: none; z-index: 1;
+}
+.canvas-watermark img { width: 220px; opacity: 0.05; filter: saturate(0.6); }

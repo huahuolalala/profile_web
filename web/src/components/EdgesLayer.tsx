@@ -58,6 +58,7 @@ export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode
             key={e.id}
             onPointerDown={(ev) => ev.stopPropagation()}
             onClick={() => connectMode && onEdgeClick(e.id)}
+            onDoubleClick={(ev) => { ev.stopPropagation(); onEdgeClick(e.id); }}
             onMouseEnter={() => onEdgeHover?.(e.id)}
             onMouseLeave={() => onEdgeHover?.(null)}
           >

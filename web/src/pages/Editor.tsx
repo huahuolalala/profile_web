@@ -318,6 +318,9 @@ export default function Editor() {
               />
             ))}
           </CanvasView>
+          <div className="canvas-watermark">
+            <img src="/logo-192.png" alt="" />
+          </div>
           <Minimap cards={doc.cards} heights={heights} viewport={viewport} stageW={stageSize.w} stageH={stageSize.h} onJump={jumpTo} />
           <div className="zoom-bar">
             <button onClick={() => zoomBy(1 / 1.2)} title="缩小"><Minus size={14} weight="bold" /></button>

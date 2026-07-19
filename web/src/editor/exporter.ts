@@ -111,7 +111,7 @@ export function exportHTML(title: string, cards: Card[]): string {
   .card li { font-size: 14px; line-height: 1.8; }
   .tags { display: flex; flex-wrap: wrap; gap: 8px; }
   .tag { background: #f2efe6; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 12px; font-size: 12.5px; }
-  .card img { max-width: 160px; border-radius: 10px; display: block; }
+  .card img { max-width: 160px; border-radius: 4px; display: block; background: #fff; padding: 6px 6px 20px; border: 1px solid #e8e2d2; box-shadow: 0 3px 10px rgba(60,50,20,.12); }
   .block + .block { margin-top: 12px; }
   .todo { list-style: none; padding-left: 0 !important; }
   .todo li { display: flex; align-items: center; gap: 8px; }
