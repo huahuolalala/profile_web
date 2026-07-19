@@ -315,9 +315,20 @@ export default function Editor() {
                 onMeasure={(cid, h) => setHeights((m) => (m[cid] === h ? m : { ...m, [cid]: h }))}
                 onUpdate={updateCard}
                 onCloseEdit={() => setEditingId(null)}
+                onConnectFrom={(cid) => setConnectFrom(cid)}
+                onDelete={(did) => { dispatch({ type: 'card/delete', id: did }); if (selectedId === did) setSelectedId(null); }}
               />
             ))}
           </CanvasView>
+          {doc.cards.length === 0 && (
+            <div className="empty-guide">
+              <img src="/logo-192.png" alt="" />
+              <p>画布还是空的，先摆一张卡片吧</p>
+              <button className="btn-primary btn-icon" onClick={() => addCard('standard')}>
+                <Plus size={15} weight="bold" /> 新建第一张卡片
+              </button>
+            </div>
+          )}
           <div className="canvas-watermark">
             <img src="/logo-192.png" alt="" />
           </div>

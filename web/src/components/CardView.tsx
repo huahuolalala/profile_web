@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link as LinkIcon, Quotes } from '@phosphor-icons/react';
+import { Link as LinkIcon, PencilSimple, Quotes, Trash } from '@phosphor-icons/react';
 import type { Block, Card } from '../types';
 import CardEditor from './CardEditor';
 
@@ -17,6 +17,8 @@ interface Props {
   onMeasure: (id: string, h: number) => void;
   onUpdate: (card: Card) => void;
   onCloseEdit: () => void;
+  onConnectFrom: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function firstText(blocks: Block[], n = 0): string {
@@ -29,6 +31,13 @@ function noteAngle(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return `${(((h % 27) + 27) % 27 - 13) / 10}deg`;
+}
+
+/** 胶带角度：-4° ~ 2°，与纸面角度错开 */
+function tapeAngle(id: string): string {
+  let h = 7;
+  for (let i = 0; i < id.length; i++) h = (h * 17 + id.charCodeAt(i)) | 0;
+  return `${(((h % 7) + 7) % 7 - 4)}deg`;
 }
 
 /** 通用块渲染（standard / note 等头部式卡片使用） */
@@ -115,7 +124,11 @@ export default function CardView(p: Props) {
 
   const cls = `card type-${c.type} theme-${c.theme} ${p.selected ? 'selected' : ''} ${p.linked ? 'linked' : ''} ${c.visible ? '' : 'card-hidden'} ${p.connectMode ? 'connectable' : ''}`;
   const style: React.CSSProperties = { left: c.x, top: c.y, width: c.w };
-  if (c.type === 'note') (style as Record<string, string | number>)['--note-rot'] = noteAngle(c.id);
+  if (c.type === 'note') {
+    const vars = style as Record<string, string | number>;
+    vars['--note-rot'] = noteAngle(c.id);
+    vars['--tape-rot'] = tapeAngle(c.id);
+  }
 
   return (
     <div
@@ -125,6 +138,19 @@ export default function CardView(p: Props) {
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
     >
+      {p.selected && !p.editing && !p.connectMode && (
+        <div className="card-toolbar" onPointerDown={(e) => e.stopPropagation()}>
+          <button title="编辑卡片" onClick={() => p.onEdit(c.id)}><PencilSimple size={13} weight="bold" /></button>
+          <button title="从此卡片开始连线" onClick={() => p.onConnectFrom(c.id)}><LinkIcon size={13} weight="bold" /></button>
+          <button
+            title="删除卡片"
+            className="danger"
+            onClick={() => { if (window.confirm(`删除卡片「${c.title}」？`)) p.onDelete(c.id); }}
+          >
+            <Trash size={13} weight="bold" />
+          </button>
+        </div>
+      )}
       {p.editing ? (
         <CardEditor
           card={c}

@@ -15,7 +15,7 @@ const MH = 126;
 const PAD = 60;
 
 export default function Minimap({ cards, heights, viewport, stageW, stageH, onJump }: Props) {
-  if (cards.length === 0) return <div className="minimap" />;
+  if (cards.length === 0) return null;
   const minX = Math.min(...cards.map((c) => c.x)) - PAD;
   const minY = Math.min(...cards.map((c) => c.y)) - PAD;
   const maxX = Math.max(...cards.map((c) => c.x + c.w)) + PAD;
