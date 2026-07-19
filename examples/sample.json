@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "cards": [
+    {
+      "title": "个人信息",
+      "theme": "white",
+      "blocks": [
+        { "type": "text", "text": "ESTHER · 产品设计师" },
+        { "type": "list", "items": ["5 年产品与体验设计经验", "base 上海", "esther@example.com"] }
+      ]
+    },
+    {
+      "title": "时间线",
+      "theme": "yellow",
+      "blocks": [
+        { "type": "list", "items": ["2024 至今 · 独立产品顾问", "2021-2024 · 某科技公司 高级产品设计师", "2019-2021 · 设计工作室 设计师"] }
+      ]
+    },
+    {
+      "title": "核心叙事",
+      "theme": "white",
+      "blocks": [
+        { "type": "text", "text": "把复杂系统讲成普通人能懂的故事，擅长从 0 到 1 定义产品体验。" }
+      ]
+    },
+    {
+      "title": "技能标签",
+      "theme": "teal",
+      "blocks": [
+        { "type": "tags", "items": ["产品设计", "用户研究", "Figma", "设计系统", "原型验证", "AIGC 工作流"] }
+      ]
+    },
+    {
+      "title": "小红书",
+      "theme": "pink",
+      "blocks": [
+        { "type": "text", "text": "设计类账号，粉丝 2.3w" },
+        { "type": "list", "items": ["分享设计方法与 AIGC 实践", "单篇最高阅读 18w"] }
+      ]
+    },
+    {
+      "title": "ColaOS",
+      "theme": "purple",
+      "blocks": [
+        { "type": "text", "text": "个人知识操作系统" },
+        { "type": "list", "items": ["负责产品定义与交互设计", "内测用户 1200+"] }
+      ]
+    },
+    {
+      "title": "NORUSH 编辑器",
+      "theme": "blue",
+      "blocks": [
+        { "type": "text", "text": "极简写作编辑器，主打无压力创作" }
+      ]
+    },
+    {
+      "title": "拼贴诗生成器",
+      "theme": "yellow",
+      "blocks": [
+        { "type": "text", "text": "把随手拍的照片变成拼贴诗的小玩具" }
+      ]
+    },
+    {
+      "title": "观点输出",
+      "theme": "white",
+      "blocks": [
+        { "type": "list", "items": ["AI 时代设计师的核心竞争力是品味", "工具应该消失，留下表达"] }
+      ]
+    },
+    {
+      "title": "AI 伙伴",
+      "theme": "teal",
+      "blocks": [
+        { "type": "text", "text": "日常使用 AI 辅助研究、写作与编程，持续探索人机协作边界" }
+      ]
+    },
+    {
+      "title": "座右铭",
+      "theme": "darkblue",
+      "blocks": [
+        { "type": "text", "text": "Stay hungry, stay foolish." }
+      ]
+    },
+    {
+      "title": "便签 — INTJ",
+      "theme": "white",
+      "blocks": [{ "type": "tags", "items": ["INTJ"] }]
+    },
+    {
+      "title": "便签 — Agent Native",
+      "theme": "white",
+      "blocks": [{ "type": "tags", "items": ["Agent Native"] }]
+    }
+  ],
+  "edges": [
+    { "from": 0, "to": 1 },
+    { "from": 0, "to": 3 },
+    { "from": 1, "to": 5 },
+    { "from": 5, "to": 6 },
+    { "from": 6, "to": 7 },
+    { "from": 2, "to": 8 }
+  ]
+}
