@@ -138,7 +138,7 @@ export default function CardView(p: Props) {
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
     >
-      {p.selected && !p.editing && !p.connectMode && (
+      {p.selected && !p.editing && !p.connectMode && p.z >= 0.5 && (
         <div className="card-toolbar" onPointerDown={(e) => e.stopPropagation()}>
           <button title="编辑卡片" onClick={() => p.onEdit(c.id)}><PencilSimple size={13} weight="bold" /></button>
           <button title="从此卡片开始连线" onClick={() => p.onConnectFrom(c.id)}><LinkIcon size={13} weight="bold" /></button>

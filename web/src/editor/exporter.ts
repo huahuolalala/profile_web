@@ -102,6 +102,11 @@ export function exportHTML(title: string, cards: Card[]): string {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; background: #f6f3ea; color: #2b2b2b; padding: 48px 16px; }
   .page { max-width: 760px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .brand-dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #f6c945, #e8a20c); display: grid; place-items: center; color: #fff; font-size: 15px; font-weight: 800; }
+  .brand-word { font-size: 17px; font-weight: 800; letter-spacing: -0.5px; color: #4a3600; }
+  .brand-word em { font-style: normal; color: #d99a06; }
+  .brand-tag { margin-left: auto; font-size: 11.5px; color: #8a8f98; letter-spacing: 0.04em; }
   h1 { font-size: 28px; letter-spacing: 1px; }
   .sub { color: #8a8f98; font-size: 13px; margin-top: 6px; }
   .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.06); padding: 22px 26px; margin-top: 20px; border-left: 5px solid var(--accent); }
@@ -131,6 +136,11 @@ export function exportHTML(title: string, cards: Card[]): string {
 </head>
 <body>
   <div class="page">
+    <div class="brand">
+      <span class="brand-dot">Y</span>
+      <span class="brand-word">Yum<em>Me</em></span>
+      <span class="brand-tag">Explore · Create · Connect · Grow</span>
+    </div>
     <h1>${esc(title)}</h1>
     <div class="sub">由 YumMe 生成 · ${date}</div>
 ${sections}

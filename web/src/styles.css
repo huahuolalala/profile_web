@@ -530,7 +530,14 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .theme-pink .note-tape { --tape: rgba(210, 95, 140, 0.35); }
 .theme-blue .note-tape { --tape: rgba(59, 130, 196, 0.35); }
 .theme-darkblue .note-tape { --tape: rgba(32, 53, 92, 0.4); }
-.note-body { padding-top: 18px; font-size: 13.5px; }
+.note-body {
+  padding-top: 18px; font-size: 13.5px;
+  /* 横线纸纹理 */
+  background-image: repeating-linear-gradient(
+    transparent, transparent 23px, rgba(60, 50, 20, 0.06) 23px, rgba(60, 50, 20, 0.06) 24px
+  );
+  border-radius: 0 0 4px 4px;
+}
 /* 便签纸色随主题（默认黄色贴纸） */
 .theme-purple.type-note { background: linear-gradient(175deg, #f3edfb, #ece1f7); }
 .theme-teal.type-note { background: linear-gradient(175deg, #e3f4f0, #d6eee8); }
