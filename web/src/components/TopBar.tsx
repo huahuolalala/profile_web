@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import {
   ArrowBendDownRight,
   ArrowCounterClockwise,
   ArrowLeft,
   ArrowClockwise,
+  CaretDown,
   Code,
   DownloadSimple,
   FileHtml,
@@ -10,6 +12,7 @@ import {
   Link as LinkIcon,
   Plus,
 } from '@phosphor-icons/react';
+import { CARD_TYPE_LABEL, CARD_TYPES, type CardType } from '../types';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -28,7 +31,7 @@ interface Props {
   canRedo: boolean;
   connectMode: boolean;
   onBack: () => void;
-  onAdd: () => void;
+  onAdd: (type: CardType) => void;
   onConnect: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -43,6 +46,8 @@ interface Props {
 const ICON = { size: 15, weight: 'bold' as const };
 
 export default function TopBar(p: Props) {
+  const [addOpen, setAddOpen] = useState(false);
+
   return (
     <header className="topbar">
       <button className="btn-ghost btn-icon" onClick={p.onBack}>
@@ -50,9 +55,27 @@ export default function TopBar(p: Props) {
       </button>
       <input className="topbar-title" value={p.title} onChange={(e) => p.onTitle(e.target.value)} placeholder="画布标题" />
       <div className="topbar-actions">
-        <button className="btn-icon" onClick={p.onAdd}>
-          <Plus {...ICON} /> 新建卡片
-        </button>
+        <div className="add-menu-wrap">
+          <button className="btn-icon" onClick={() => setAddOpen((v) => !v)}>
+            <Plus {...ICON} /> 新建卡片 <CaretDown size={11} weight="bold" />
+          </button>
+          {addOpen && (
+            <>
+              <div className="add-menu-mask" onClick={() => setAddOpen(false)} />
+              <div className="add-menu">
+                {CARD_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    className="add-menu-item"
+                    onClick={() => { setAddOpen(false); p.onAdd(t); }}
+                  >
+                    {CARD_TYPE_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <button
           className={`btn-icon ${p.connectMode ? 'active' : ''}`}
           onClick={p.onConnect}
@@ -60,28 +83,28 @@ export default function TopBar(p: Props) {
         >
           <LinkIcon {...ICON} /> 连线
         </button>
-        <button className="btn-icon" disabled={!p.canUndo} onClick={p.onUndo}>
-          <ArrowCounterClockwise {...ICON} /> 撤销
+        <button className="btn-icon" disabled={!p.canUndo} onClick={p.onUndo} title="撤销 (Ctrl+Z)">
+          <ArrowCounterClockwise {...ICON} />
         </button>
-        <button className="btn-icon" disabled={!p.canRedo} onClick={p.onRedo}>
-          <ArrowClockwise {...ICON} /> 重做
+        <button className="btn-icon" disabled={!p.canRedo} onClick={p.onRedo} title="重做 (Ctrl+Shift+Z)">
+          <ArrowClockwise {...ICON} />
         </button>
         <button
           className={`btn-icon ${p.arrows ? 'active' : ''}`}
           onClick={p.onToggleArrows}
           title="切换连线是否带箭头"
         >
-          <ArrowBendDownRight {...ICON} /> 箭头
+          <ArrowBendDownRight {...ICON} />
         </button>
         <span className="topbar-sep" />
         <button className="btn-icon" onClick={p.onImport} title="粘贴 AI 生成的 DSL 代码渲染卡片">
-          <Code {...ICON} /> 导入代码
+          <Code {...ICON} /> 导入
         </button>
         <button className="btn-icon" onClick={p.onExportCode} title="把当前画布导出为 DSL 代码">
-          <DownloadSimple {...ICON} /> 导出代码
+          <DownloadSimple {...ICON} /> 代码
         </button>
-        <button className="btn-icon" onClick={p.onExportHTML} title="导出单文件 HTML 简历">
-          <FileHtml {...ICON} /> 导出 HTML
+        <button className="btn-icon" onClick={p.onExportHTML} title="导出单文件 HTML 页面">
+          <FileHtml {...ICON} /> HTML
         </button>
         <span className="topbar-sep" />
         <button className="btn-primary btn-icon" onClick={p.onSave}>

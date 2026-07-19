@@ -503,7 +503,7 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .card.type-note {
   background: linear-gradient(175deg, #fff9d6, #fff5bd);
   border-radius: 4px 4px 14px 4px;
-  transform: rotate(-0.6deg);
+  transform: rotate(var(--note-rot, -0.6deg));
   box-shadow: 0 6px 18px rgba(60, 50, 20, 0.14);
 }
 .card.type-note:hover { transform: rotate(0deg) translateY(-2px); }
@@ -602,4 +602,27 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .ce-todo-add {
   align-self: flex-start; font-size: 12px; padding: 3px 10px;
   border-style: dashed; color: var(--ink-soft);
+}
+
+/* ===== 新建卡片类型菜单 ===== */
+.add-menu-wrap { position: relative; }
+.add-menu-mask { position: fixed; inset: 0; z-index: 90; }
+.add-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 95;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  background: var(--panel-solid); border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg); padding: 6px;
+  animation: pop-in 0.28s var(--spring);
+}
+.add-menu-item { padding: 7px 12px; font-size: 12.5px; white-space: nowrap; }
+.add-menu-item:hover { background: rgba(240, 180, 41, 0.14); border-color: var(--accent); }
+
+/* ===== 新连线画线动画 ===== */
+.edge-new {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: edge-draw 0.65s var(--ease) forwards;
+}
+@keyframes edge-draw {
+  to { stroke-dashoffset: 0; }
 }

@@ -25,11 +25,12 @@ interface Props {
   dragPos: Record<string, { x: number; y: number }>;
   connectMode: boolean;
   showArrows: boolean;
+  newEdgeId?: string | null;
   onEdgeClick: (id: string) => void;
 }
 
 /** 连线层：手绘蜡笔风（feTurbulence 抖动位移），箭头可开关 */
-export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode, showArrows, onEdgeClick }: Props) {
+export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode, showArrows, newEdgeId, onEdgeClick }: Props) {
   const byId = new Map(cards.map((c) => [c.id, c]));
   return (
     <svg className="edges-layer">
@@ -60,7 +61,8 @@ export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode
             <path d={d} className="edge-hit" />
             <path
               d={d}
-              className={`edge-path ${connectMode ? 'edge-deletable' : ''}`}
+              className={`edge-path ${connectMode ? 'edge-deletable' : ''} ${e.id === newEdgeId ? 'edge-new' : ''}`}
+              pathLength={e.id === newEdgeId ? 100 : undefined}
               style={{ filter: `url(#crayon-${CRAYON_SEEDS[i % CRAYON_SEEDS.length]})` }}
               markerEnd={showArrows ? 'url(#edge-arrow)' : undefined}
             />

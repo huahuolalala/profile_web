@@ -23,6 +23,13 @@ function firstText(blocks: Block[], n = 0): string {
   return texts[n]?.text ?? '';
 }
 
+/** 由卡片 id 哈希出 -1.3° ~ 1.3° 的确定角度：每张便签都像手贴的一样 */
+function noteAngle(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return `${(((h % 27) + 27) % 27 - 13) / 10}deg`;
+}
+
 /** 通用块渲染（standard / note 等头部式卡片使用） */
 function Blocks({ card, onToggleTodo }: { card: Card; onToggleTodo?: (bi: number, ii: number) => void }) {
   return (
@@ -106,12 +113,14 @@ export default function CardView(p: Props) {
   };
 
   const cls = `card type-${c.type} theme-${c.theme} ${p.selected ? 'selected' : ''} ${c.visible ? '' : 'card-hidden'} ${p.connectMode ? 'connectable' : ''}`;
+  const style: React.CSSProperties = { left: c.x, top: c.y, width: c.w };
+  if (c.type === 'note') (style as Record<string, string | number>)['--note-rot'] = noteAngle(c.id);
 
   return (
     <div
       ref={ref}
       className={cls}
-      style={{ left: c.x, top: c.y, width: c.w }}
+      style={style}
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
     >

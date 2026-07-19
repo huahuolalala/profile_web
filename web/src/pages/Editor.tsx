@@ -16,10 +16,20 @@ import { exportHTML } from '../editor/exporter';
 import { editorReducer, initEditor, loadLocal, saveLocal, uid, type EditorDoc } from '../editor/store';
 import { toWorld, zoomAt, type Viewport } from '../editor/transform';
 import { canRedo, canUndo } from '../editor/undostack';
-import type { Card, Resume } from '../types';
+import type { Block, Card, CardType, Resume } from '../types';
 
 const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
 const HOME_VIEW: Viewport = { x: 200, y: 80, z: 1 };
+
+/** 各类型新卡片的默认标题与内容 */
+const CARD_PRESET: Record<CardType, { title: string; blocks: Block[] }> = {
+  standard: { title: '新卡片', blocks: [{ type: 'text', text: '双击编辑内容' }] },
+  note: { title: '便签', blocks: [{ type: 'text', text: '随手记…' }] },
+  quote: { title: '署名', blocks: [{ type: 'text', text: '写一句引言' }] },
+  link: { title: '链接标题', blocks: [{ type: 'text', text: 'example.com' }, { type: 'text', text: '一句话描述' }] },
+  stat: { title: '指标名', blocks: [{ type: 'text', text: '42%' }, { type: 'text', text: '补充说明' }] },
+  todo: { title: '待办清单', blocks: [{ type: 'todo', items: [{ text: '第一件事', done: false }] }] },
+};
 
 export default function Editor() {
   const { id = '' } = useParams();
@@ -38,6 +48,7 @@ export default function Editor() {
   const [stageSize, setStageSize] = useState({ w: 1200, h: 800 });
   const [importOpen, setImportOpen] = useState(false);
   const [dslOpen, setDslOpen] = useState(false);
+  const [newEdgeId, setNewEdgeId] = useState<string | null>(null);
   // 连线箭头开关（持久化到 localStorage）
   const [showArrows, setShowArrows] = useState(() => localStorage.getItem('pw_arrows') !== '0');
   const toggleArrows = () => {
@@ -166,8 +177,12 @@ export default function Editor() {
     if (connectFrom !== null) {
       if (connectFrom === '') setConnectFrom(cid);
       else if (connectFrom !== cid) {
-        dispatch({ type: 'edge/add', edge: { id: uid(), fromId: connectFrom, toId: cid } });
+        const edge = { id: uid(), fromId: connectFrom, toId: cid };
+        dispatch({ type: 'edge/add', edge });
         setConnectFrom(null);
+        // 新连线画线动画（一次性，播完即清除标记）
+        setNewEdgeId(edge.id);
+        setTimeout(() => setNewEdgeId(null), 800);
       }
       return;
     }
@@ -181,12 +196,13 @@ export default function Editor() {
 
   const zoomBy = (f: number) => animateViewport(zoomAt(viewportRef.current, stageSize.w / 2, stageSize.h / 2, f));
 
-  const addCard = () => {
+  const addCard = (type: CardType) => {
     const c = toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
+    const preset = CARD_PRESET[type];
     const card: Card = {
-      id: uid(), title: '新卡片', type: 'standard', theme: 'white',
+      id: uid(), title: preset.title, type, theme: 'white',
       x: c.x - 130, y: c.y - 100, w: 260, visible: true,
-      blocks: [{ type: 'text', text: '双击编辑内容' }],
+      blocks: preset.blocks,
     };
     dispatch({ type: 'card/add', card });
     setSelectedId(card.id);
@@ -256,7 +272,7 @@ export default function Editor() {
             const c = doc.cards.find((x) => x.id === cid);
             if (c) { jumpTo(c.x + c.w / 2, c.y + 100); setSelectedId(cid); }
           }}
-          onAdd={addCard}
+          onAdd={() => addCard('standard')}
           onRename={(cid, t) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, title: t }); }}
           onToggle={(cid) => { const c = doc.cards.find((x) => x.id === cid); if (c) updateCard({ ...c, visible: !c.visible }); }}
           onDelete={(cid) => { dispatch({ type: 'card/delete', id: cid }); if (selectedId === cid) setSelectedId(null); }}
@@ -271,6 +287,7 @@ export default function Editor() {
               cards={doc.cards} edges={doc.edges} heights={heights} dragPos={dragPos}
               connectMode={connectFrom !== null}
               showArrows={showArrows}
+              newEdgeId={newEdgeId}
               onEdgeClick={(eid) => dispatch({ type: 'edge/delete', id: eid })}
             />
             {doc.cards.map((c) => (
