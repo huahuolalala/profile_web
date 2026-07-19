@@ -17,7 +17,17 @@ export default function CardEditor({ card, onSave, onCancel }: Props) {
   const [raw, setRaw] = useState<Record<number, string>>({});
 
   const setBlock = (i: number, b: Block) => setBlocks(blocks.map((x, j) => (j === i ? b : x)));
-  const delBlock = (i: number) => setBlocks(blocks.filter((_, j) => j !== i));
+  const delBlock = (i: number) => {
+    setBlocks(blocks.filter((_, j) => j !== i));
+    // 同步重排 raw 下标：丢弃被删块的键，其后的键下移一位，避免原始输入串错位覆盖其他块
+    setRaw((prev) =>
+      Object.fromEntries(
+        Object.entries(prev)
+          .filter(([k]) => Number(k) !== i)
+          .map(([k, v]): [number, string] => (Number(k) > i ? [Number(k) - 1, v] : [Number(k), v])),
+      ),
+    );
+  };
   const addBlock = (b: Block) => setBlocks([...blocks, b]);
 
   const onImage = (i: number, file: File | undefined) => {
