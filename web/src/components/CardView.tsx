@@ -38,6 +38,7 @@ export default function CardView(p: Props) {
     let cur = { x: p.card.x, y: p.card.y };
     let moved = false;
     const move = (ev: PointerEvent) => {
+      if (!moved) el.classList.add('dragging'); // 拿起手感：放大 + 投影加深
       cur = { x: start.x + (ev.clientX - start.cx) / p.z, y: start.y + (ev.clientY - start.cy) / p.z };
       moved = true;
       el.style.left = `${cur.x}px`;
@@ -45,6 +46,7 @@ export default function CardView(p: Props) {
       p.onDrag(p.card.id, cur.x, cur.y);
     };
     const up = () => {
+      el.classList.remove('dragging');
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up);
       if (moved) p.onMoveEnd(p.card.id, Math.round(cur.x), Math.round(cur.y));

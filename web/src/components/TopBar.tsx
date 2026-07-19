@@ -1,3 +1,16 @@
+import {
+  ArrowBendDownRight,
+  ArrowCounterClockwise,
+  ArrowLeft,
+  ArrowClockwise,
+  Code,
+  DownloadSimple,
+  FileHtml,
+  FloppyDisk,
+  Link as LinkIcon,
+  Plus,
+} from '@phosphor-icons/react';
+
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 const SAVE_TEXT: Record<SaveState, string> = {
@@ -23,26 +36,57 @@ interface Props {
   onExportCode: () => void;
   onExportHTML: () => void;
   onSave: () => void;
+  arrows: boolean;
+  onToggleArrows: () => void;
 }
+
+const ICON = { size: 15, weight: 'bold' as const };
 
 export default function TopBar(p: Props) {
   return (
     <header className="topbar">
-      <button className="btn-ghost" onClick={p.onBack}>← 列表</button>
-      <input className="topbar-title" value={p.title} onChange={(e) => p.onTitle(e.target.value)} placeholder="简历标题" />
+      <button className="btn-ghost btn-icon" onClick={p.onBack}>
+        <ArrowLeft {...ICON} /> 列表
+      </button>
+      <input className="topbar-title" value={p.title} onChange={(e) => p.onTitle(e.target.value)} placeholder="画布标题" />
       <div className="topbar-actions">
-        <button onClick={p.onAdd}>＋ 新建卡片</button>
-        <button className={p.connectMode ? 'active' : ''} onClick={p.onConnect} title="进入连线模式：依次点两张卡片生成连线；点已有连线删除；Esc 退出">
-          🔗 连线
+        <button className="btn-icon" onClick={p.onAdd}>
+          <Plus {...ICON} /> 新建卡片
         </button>
-        <button disabled={!p.canUndo} onClick={p.onUndo}>↩ 撤销</button>
-        <button disabled={!p.canRedo} onClick={p.onRedo}>↪ 重做</button>
+        <button
+          className={`btn-icon ${p.connectMode ? 'active' : ''}`}
+          onClick={p.onConnect}
+          title="进入连线模式：依次点两张卡片生成连线；点已有连线删除；Esc 退出"
+        >
+          <LinkIcon {...ICON} /> 连线
+        </button>
+        <button className="btn-icon" disabled={!p.canUndo} onClick={p.onUndo}>
+          <ArrowCounterClockwise {...ICON} /> 撤销
+        </button>
+        <button className="btn-icon" disabled={!p.canRedo} onClick={p.onRedo}>
+          <ArrowClockwise {...ICON} /> 重做
+        </button>
+        <button
+          className={`btn-icon ${p.arrows ? 'active' : ''}`}
+          onClick={p.onToggleArrows}
+          title="切换连线是否带箭头"
+        >
+          <ArrowBendDownRight {...ICON} /> 箭头
+        </button>
         <span className="topbar-sep" />
-        <button onClick={p.onImport} title="粘贴 AI 生成的 DSL 代码渲染卡片">⇥ 导入代码</button>
-        <button onClick={p.onExportCode} title="把当前画布导出为 DSL 代码">⇤ 导出代码</button>
-        <button onClick={p.onExportHTML} title="导出单文件 HTML 简历">⬇ 导出 HTML</button>
+        <button className="btn-icon" onClick={p.onImport} title="粘贴 AI 生成的 DSL 代码渲染卡片">
+          <Code {...ICON} /> 导入代码
+        </button>
+        <button className="btn-icon" onClick={p.onExportCode} title="把当前画布导出为 DSL 代码">
+          <DownloadSimple {...ICON} /> 导出代码
+        </button>
+        <button className="btn-icon" onClick={p.onExportHTML} title="导出单文件 HTML 简历">
+          <FileHtml {...ICON} /> 导出 HTML
+        </button>
         <span className="topbar-sep" />
-        <button className="btn-primary" onClick={p.onSave}>保存</button>
+        <button className="btn-primary btn-icon" onClick={p.onSave}>
+          <FloppyDisk {...ICON} /> 保存
+        </button>
         <span className={`save-state save-${p.saveState}`}>{SAVE_TEXT[p.saveState]}</span>
       </div>
     </header>

@@ -1,0 +1,14 @@
+2026/07/19 18:05:11.095841 engine.go:702: [Debug] HERTZ: Method=POST   absolutePath=/api/register             --> handlerName=main.main.Register.func3 (num=3 handlers)
+2026/07/19 18:05:11.096305 engine.go:702: [Debug] HERTZ: Method=POST   absolutePath=/api/login                --> handlerName=main.main.Login.func4 (num=3 handlers)
+2026/07/19 18:05:11.096320 engine.go:702: [Debug] HERTZ: Method=GET    absolutePath=/api/resumes              --> handlerName=main.main.ListResumes.func6 (num=4 handlers)
+2026/07/19 18:05:11.096329 engine.go:702: [Debug] HERTZ: Method=POST   absolutePath=/api/resumes              --> handlerName=main.main.CreateResume.func7 (num=4 handlers)
+2026/07/19 18:05:11.096338 engine.go:702: [Debug] HERTZ: Method=GET    absolutePath=/api/resumes/:id          --> handlerName=main.main.GetResume.func8 (num=4 handlers)
+2026/07/19 18:05:11.096346 engine.go:702: [Debug] HERTZ: Method=PUT    absolutePath=/api/resumes/:id          --> handlerName=main.main.SaveResume.func9 (num=4 handlers)
+2026/07/19 18:05:11.096354 engine.go:702: [Debug] HERTZ: Method=PATCH  absolutePath=/api/resumes/:id          --> handlerName=main.main.RenameResume.func10 (num=4 handlers)
+2026/07/19 18:05:11.096361 engine.go:702: [Debug] HERTZ: Method=DELETE absolutePath=/api/resumes/:id          --> handlerName=main.main.DeleteResume.func11 (num=4 handlers)
+2026/07/19 18:05:11.096404 engine.go:702: [Debug] HERTZ: Method=GET    absolutePath=/*filepath                --> handlerName=github.com/cloudwego/hertz/pkg/app.(*fsHandler).handleRequest-fm (num=3 handlers)
+2026/07/19 18:05:11.096414 engine.go:702: [Debug] HERTZ: Method=HEAD   absolutePath=/*filepath                --> handlerName=github.com/cloudwego/hertz/pkg/app.(*fsHandler).handleRequest-fm (num=3 handlers)
+2026/07/19 18:05:11.096518 engine.go:416: [Info] HERTZ: Using network library=netpoll
+2026/07/19 18:05:11.096852 transport.go:152: [Info] HERTZ: HTTP server listening on address=[::]:8080
+2026/07/19 18:22:13.363070 fs.go:856: [Error] HERTZ: Cannot open file="../web/dist/mind", error=open ../web/dist/mind: no such file or directory
+2026/07/19 18:22:15.771169 fs.go:856: [Error] HERTZ: Cannot open file="../web/dist/mind/1", error=open ../web/dist/mind/1: no such file or directory

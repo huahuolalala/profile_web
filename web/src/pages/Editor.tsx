@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { animate, type AnimationPlaybackControls } from 'motion/react';
+import { FrameCorners, Minus, Plus } from '@phosphor-icons/react';
 import { api, parseServerTime } from '../api/client';
 import CanvasView from '../components/CanvasView';
 import CardView from '../components/CardView';
@@ -17,6 +19,7 @@ import { canRedo, canUndo } from '../editor/undostack';
 import type { Card, Resume } from '../types';
 
 const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
+const HOME_VIEW: Viewport = { x: 200, y: 80, z: 1 };
 
 export default function Editor() {
   const { id = '' } = useParams();
@@ -25,7 +28,7 @@ export default function Editor() {
   const doc = state.present;
 
   const [loaded, setLoaded] = useState(false);
-  const [viewport, setViewport] = useState<Viewport>({ x: 200, y: 80, z: 1 });
+  const [viewport, setViewport] = useState<Viewport>(HOME_VIEW);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null); // null=关闭；''=等源卡片；否则为源卡片 id
@@ -35,11 +38,55 @@ export default function Editor() {
   const [stageSize, setStageSize] = useState({ w: 1200, h: 800 });
   const [importOpen, setImportOpen] = useState(false);
   const [dslOpen, setDslOpen] = useState(false);
+  // 连线箭头开关（持久化到 localStorage）
+  const [showArrows, setShowArrows] = useState(() => localStorage.getItem('pw_arrows') !== '0');
+  const toggleArrows = () => {
+    setShowArrows((v) => {
+      localStorage.setItem('pw_arrows', v ? '0' : '1');
+      return !v;
+    });
+  };
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const docRef = useRef(doc);
   docRef.current = doc;
+
+  // 视口弹簧动画（iOS/macOS 手感）：手动交互（滚轮/拖拽）直接驱动，程序化跳转走弹簧
+  const viewportRef = useRef(viewport);
+  viewportRef.current = viewport;
+  const animRef = useRef<AnimationPlaybackControls | null>(null);
+
+  const stopViewportAnim = () => {
+    animRef.current?.stop();
+    animRef.current = null;
+  };
+
+  const animateViewport = useCallback((target: Viewport) => {
+    stopViewportAnim();
+    const from = viewportRef.current;
+    animRef.current = animate(0, 1, {
+      type: 'spring',
+      stiffness: 280,
+      damping: 34,
+      mass: 0.9,
+      onUpdate: (t) => {
+        setViewport({
+          x: from.x + (target.x - from.x) * t,
+          y: from.y + (target.y - from.y) * t,
+          z: from.z + (target.z - from.z) * t,
+        });
+      },
+    });
+  }, []);
+
+  // 用户手动操作时立即打断动画，拿回控制权
+  const onViewportManual = useCallback((v: Viewport) => {
+    stopViewportAnim();
+    setViewport(v);
+  }, []);
+
+  useEffect(() => () => stopViewportAnim(), []);
 
   // 加载：本地缓存与后端取较新者（后端为容灾备份）
   useEffect(() => {
@@ -53,8 +100,8 @@ export default function Editor() {
         dispatch({ type: 'doc/load', doc: useLocal ? local.doc : serverDoc });
         setLoaded(true);
       } catch (e) {
-        alert('简历加载失败：' + (e as Error).message);
-        nav('/');
+        alert('画布加载失败：' + (e as Error).message);
+        nav('/mind');
       }
     })();
   }, [id, nav]);
@@ -128,10 +175,11 @@ export default function Editor() {
   };
 
   const jumpTo = (wx: number, wy: number) => {
-    setViewport((v) => ({ ...v, x: stageSize.w / 2 - wx * v.z, y: stageSize.h / 2 - wy * v.z }));
+    const v = viewportRef.current;
+    animateViewport({ ...v, x: stageSize.w / 2 - wx * v.z, y: stageSize.h / 2 - wy * v.z });
   };
 
-  const zoomBy = (f: number) => setViewport((v) => zoomAt(v, stageSize.w / 2, stageSize.h / 2, f));
+  const zoomBy = (f: number) => animateViewport(zoomAt(viewportRef.current, stageSize.w / 2, stageSize.h / 2, f));
 
   const addCard = () => {
     const c = toWorld(viewport, stageSize.w / 2, stageSize.h / 2);
@@ -163,7 +211,21 @@ export default function Editor() {
     URL.revokeObjectURL(a.href);
   };
 
-  if (!loaded) return <div className="loading">加载中…</div>;
+  if (!loaded) {
+    return (
+      <div className="loading-screen">
+        <div className="skeleton skeleton-topbar" />
+        <div className="loading-body">
+          <div className="skeleton skeleton-panel" />
+          <div className="loading-stage">
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card s2" />
+            <div className="skeleton skeleton-card s3" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="editor-root">
@@ -174,7 +236,7 @@ export default function Editor() {
         canUndo={canUndo(state)}
         canRedo={canRedo(state)}
         connectMode={connectFrom !== null}
-        onBack={() => nav('/')}
+        onBack={() => nav('/mind')}
         onAdd={addCard}
         onConnect={() => setConnectFrom(connectFrom === null ? '' : null)}
         onUndo={() => dispatch({ type: 'history/undo' })}
@@ -183,6 +245,8 @@ export default function Editor() {
         onExportCode={() => setDslOpen(true)}
         onExportHTML={onExportHTML}
         onSave={() => void syncNow()}
+        arrows={showArrows}
+        onToggleArrows={toggleArrows}
       />
       <div className="editor-main">
         <LayersPanel
@@ -200,12 +264,13 @@ export default function Editor() {
         <div className="stage" ref={stageRef}>
           <CanvasView
             viewport={viewport}
-            onViewport={setViewport}
+            onViewport={onViewportManual}
             onBackgroundClick={() => { setSelectedId(null); setEditingId(null); }}
           >
             <EdgesLayer
               cards={doc.cards} edges={doc.edges} heights={heights} dragPos={dragPos}
               connectMode={connectFrom !== null}
+              showArrows={showArrows}
               onEdgeClick={(eid) => dispatch({ type: 'edge/delete', id: eid })}
             />
             {doc.cards.map((c) => (
@@ -229,10 +294,10 @@ export default function Editor() {
           </CanvasView>
           <Minimap cards={doc.cards} heights={heights} viewport={viewport} stageW={stageSize.w} stageH={stageSize.h} onJump={jumpTo} />
           <div className="zoom-bar">
-            <button onClick={() => zoomBy(1 / 1.2)}>−</button>
+            <button onClick={() => zoomBy(1 / 1.2)} title="缩小"><Minus size={14} weight="bold" /></button>
             <span>{Math.round(viewport.z * 100)}%</span>
-            <button onClick={() => zoomBy(1.2)}>＋</button>
-            <button title="复位视图" onClick={() => setViewport({ x: 200, y: 80, z: 1 })}>⤢</button>
+            <button onClick={() => zoomBy(1.2)} title="放大"><Plus size={14} weight="bold" /></button>
+            <button title="复位视图" onClick={() => animateViewport(HOME_VIEW)}><FrameCorners size={14} weight="bold" /></button>
           </div>
           <HintBar />
         </div>

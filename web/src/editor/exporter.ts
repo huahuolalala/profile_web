@@ -71,7 +71,7 @@ export function exportHTML(title: string, cards: Card[]): string {
 <body>
   <div class="page">
     <h1>${esc(title)}</h1>
-    <div class="sub">由简历画布生成 · ${date}</div>
+    <div class="sub">由 YumMe 生成 · ${date}</div>
 ${sections}
   </div>
 </body>

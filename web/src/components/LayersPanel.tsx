@@ -1,3 +1,4 @@
+import { Eye, EyeSlash, Plus, Stack, Trash } from '@phosphor-icons/react';
 import type { Card } from '../types';
 
 interface Props {
@@ -13,7 +14,9 @@ interface Props {
 export default function LayersPanel({ cards, selectedId, onJump, onAdd, onRename, onToggle, onDelete }: Props) {
   return (
     <aside className="layers-panel">
-      <div className="panel-title">✦ Layers</div>
+      <div className="panel-title">
+        <Stack size={14} weight="bold" /> Layers
+      </div>
       <ul>
         {cards.map((c) => (
           <li key={c.id} className={c.id === selectedId ? 'active' : ''}>
@@ -30,15 +33,17 @@ export default function LayersPanel({ cards, selectedId, onJump, onAdd, onRename
               {c.title}
             </span>
             <button className="icon-btn" title={c.visible ? '点击隐藏（导出时排除）' : '点击显示'} onClick={() => onToggle(c.id)}>
-              {c.visible ? '👁' : '–'}
+              {c.visible ? <Eye size={14} /> : <EyeSlash size={14} />}
             </button>
             <button className="icon-btn" title="删除卡片" onClick={() => { if (window.confirm(`删除卡片「${c.title}」？`)) onDelete(c.id); }}>
-              🗑
+              <Trash size={14} />
             </button>
           </li>
         ))}
       </ul>
-      <button className="btn-new" onClick={onAdd}>＋ 新建</button>
+      <button className="btn-new btn-icon" onClick={onAdd}>
+        <Plus size={14} weight="bold" /> 新建
+      </button>
     </aside>
   );
 }

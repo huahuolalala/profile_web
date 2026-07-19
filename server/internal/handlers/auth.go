@@ -7,10 +7,12 @@ import (
 	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"modernc.org/sqlite"
 
 	"profile_web/server/internal/auth"
+	"profile_web/server/internal/seed"
 )
 
 // sqlitePrimaryConstraint 是 SQLite 主结果码 SQLITE_CONSTRAINT（扩展码需 & 0xff 后比较）。
@@ -53,6 +55,10 @@ func Register(d *sql.DB) app.HandlerFunc {
 			return
 		}
 		uid, _ := res.LastInsertId()
+		// 播种 YumMe Example 样例画布；失败不阻断注册
+		if err := seed.CreateSampleResume(ctx, d, uid); err != nil {
+			hlog.Warnf("seed sample resume for user %d failed: %v", uid, err)
+		}
 		tok, err := auth.SignToken(uid)
 		if err != nil {
 			fail500(c)

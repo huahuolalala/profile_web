@@ -1,6 +1,6 @@
-# 简历画布（profile_web）
+# YumMe（YummyMind）· 思维画布
 
-个人简历辅助生成网站。React 画布编辑器 + Go/Hertz 后端。详见 `docs/superpowers/specs/2026-07-19-resume-canvas-design.md`。
+把脑海里的样子摆出来：自由拼贴的思维画布（mind cards），可导出精美单文件 HTML。React 画布编辑器 + Go/Hertz 后端。详见 `docs/superpowers/specs/2026-07-19-resume-canvas-design.md`。
 
 ## 开发命令
 
