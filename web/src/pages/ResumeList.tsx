@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowSquareOut, Brain, Plus, SignOut } from '@phosphor-icons/react';
-import { api, setToken } from '../api/client';
+import { api, setToken, formatRelativeTime } from '../api/client';
 import type { ResumeSummary } from '../types';
 
 export default function ResumeList() {
@@ -53,7 +53,7 @@ export default function ResumeList() {
           <div className="resume-item" key={r.id} onClick={() => nav(`/mind/${r.id}`)}>
             <div className="resume-strip" />
             <div className="resume-title">{r.title}</div>
-            <div className="resume-time">更新于 {r.updatedAt}</div>
+            <div className="resume-time">更新于 {formatRelativeTime(r.updatedAt)}</div>
             <div className="resume-ops" onClick={(e) => e.stopPropagation()}>
               <button className="btn-icon" onClick={() => nav(`/mind/${r.id}`)}>
                 <ArrowSquareOut size={13} /> 打开
