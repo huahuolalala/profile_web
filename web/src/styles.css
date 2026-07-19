@@ -522,12 +522,15 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .card.type-note.dragging { transform: rotate(0deg) scale(1.03); }
 .note-tape {
   position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(var(--tape-rot, -2deg));
-  width: 72px; height: 20px;
-  background: var(--tape, rgba(240, 180, 41, 0.45));
-  border-left: 1px dashed rgba(255, 255, 255, 0.6);
-  border-right: 1px dashed rgba(255, 255, 255, 0.6);
+  width: 74px; height: 21px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.3) 0 2px, rgba(255, 255, 255, 0) 2px 5px),
+    var(--tape, rgba(240, 180, 41, 0.45));
   border-radius: 2px;
   box-shadow: 0 1px 3px rgba(60, 50, 20, 0.12);
+  /* 和纸毛边 */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 3px, #000 calc(100% - 3px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 3px, #000 calc(100% - 3px), transparent 100%);
 }
 /* 胶带颜色随卡片主题 */
 .theme-white .note-tape { --tape: rgba(160, 160, 160, 0.4); }

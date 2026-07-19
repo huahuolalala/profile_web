@@ -55,6 +55,13 @@ function rot(id: string): string {
   return `${(((h % 25) + 25) % 25 - 12) / 10}deg`;
 }
 
+/** 胶带角度：-5° ~ 4°，与纸面角度错开，避免所有胶带朝同一方向 */
+function tapeRot(id: string): string {
+  let h = 13;
+  for (let i = 0; i < id.length; i++) h = (h * 17 + id.charCodeAt(i)) | 0;
+  return `${(((h % 10) + 10) % 10 - 5)}deg`;
+}
+
 function blockHTML(b: Block): string {
   switch (b.type) {
     case 'text':
@@ -81,7 +88,7 @@ const SQUIGGLE = `<svg class="squiggle" viewBox="0 0 100 6" preserveAspectRatio=
 
 function cardHTML(c: Card, colCls: string): string {
   const color = THEME_COLOR[c.theme] ?? THEME_COLOR.white;
-  const style = `--accent:${color};--rot:${rot(c.id)}`;
+  const style = `--accent:${color};--rot:${rot(c.id)};--tape-rot:${tapeRot(c.id)}`;
   const tape = `<span class="tape"></span>`;
   const blocks = c.blocks.map((b) => `<div class="block">${blockHTML(b)}</div>`).join('\n      ');
   switch (c.type) {
@@ -190,9 +197,19 @@ export function exportHTML(title: string, cards: Card[]): string {
     border: 1px solid rgba(60, 50, 20, 0.08);
   }
   .tape {
-    position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-2deg);
-    width: 76px; height: 20px; background: var(--accent); opacity: 0.38;
-    border-radius: 2px; border-left: 2px dashed rgba(255,255,255,.7); border-right: 2px dashed rgba(255,255,255,.7);
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(var(--tape-rot, -2deg));
+    width: 82px; height: 22px; opacity: 0.62;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.28) 0 2px, rgba(255,255,255,0) 2px 5px),
+      linear-gradient(180deg, color-mix(in srgb, var(--accent) 62%, #fff) 0%, var(--accent) 100%);
+    box-shadow: 0 1px 3px rgba(60,50,20,.14);
+    /* 和纸毛边：左右锯齿状撕口 */
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 3px, #000 calc(100% - 3px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 3px, #000 calc(100% - 3px), transparent 100%);
+  }
+  .tape::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,.35), rgba(255,255,255,0) 30%, rgba(255,255,255,0) 70%, rgba(0,0,0,.05));
   }
   .card h2 {
     font-size: 17px; color: #3d2f10; font-family: "Kaiti SC", "STKaiti", "KaiTi", serif;
