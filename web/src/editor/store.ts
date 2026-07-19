@@ -12,9 +12,11 @@ export type DocAction =
   | { type: 'doc/replace'; doc: EditorDoc }
   | { type: 'title/set'; title: string }
   | { type: 'card/move'; id: string; x: number; y: number }
+  | { type: 'cards/moveMany'; moves: { id: string; x: number; y: number }[] }
   | { type: 'card/update'; card: Card }
   | { type: 'card/add'; card: Card }
   | { type: 'card/delete'; id: string }
+  | { type: 'cards/deleteMany'; ids: string[] }
   | { type: 'edge/add'; edge: Edge }
   | { type: 'edge/delete'; id: string };
 
@@ -27,6 +29,10 @@ export function docReducer(doc: EditorDoc, a: DocAction): EditorDoc {
       return { ...doc, title: a.title };
     case 'card/move':
       return { ...doc, cards: doc.cards.map((c) => (c.id === a.id ? { ...c, x: a.x, y: a.y } : c)) };
+    case 'cards/moveMany': {
+      const m = new Map(a.moves.map((v) => [v.id, v]));
+      return { ...doc, cards: doc.cards.map((c) => (m.has(c.id) ? { ...c, x: m.get(c.id)!.x, y: m.get(c.id)!.y } : c)) };
+    }
     case 'card/update':
       return { ...doc, cards: doc.cards.map((c) => (c.id === a.card.id ? a.card : c)) };
     case 'card/add':
@@ -36,6 +42,12 @@ export function docReducer(doc: EditorDoc, a: DocAction): EditorDoc {
         ...doc,
         cards: doc.cards.filter((c) => c.id !== a.id),
         edges: doc.edges.filter((e) => e.fromId !== a.id && e.toId !== a.id),
+      };
+    case 'cards/deleteMany':
+      return {
+        ...doc,
+        cards: doc.cards.filter((c) => !a.ids.includes(c.id)),
+        edges: doc.edges.filter((e) => !a.ids.includes(e.fromId) && !a.ids.includes(e.toId)),
       };
     case 'edge/add':
       return { ...doc, edges: [...doc.edges, a.edge] };

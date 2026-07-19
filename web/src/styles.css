@@ -693,3 +693,19 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 }
 .empty-guide img { width: 110px; border-radius: 26px; box-shadow: var(--shadow-md); animation: float 5s ease-in-out infinite; }
 .empty-guide p { color: var(--ink-soft); font-size: 14px; }
+
+/* ===== 导出预览弹窗 ===== */
+.preview-modal {
+  width: min(960px, 94vw); height: min(760px, 90vh);
+  background: var(--panel-solid); border: 1px solid var(--border-soft);
+  border-radius: 20px; box-shadow: var(--shadow-lift);
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: pop-in 0.4s var(--spring);
+}
+.preview-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--border-soft);
+}
+.preview-bar h3 { font-size: 15px; font-weight: 700; }
+.preview-actions { display: flex; gap: 8px; }
+.preview-frame { flex: 1; border: none; background: #f7f2e6; }

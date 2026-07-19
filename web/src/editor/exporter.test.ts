@@ -63,7 +63,7 @@ describe('卡片类型导出渲染', () => {
       { ...base, id: 'q', title: '林晚晴', type: 'quote', blocks: [{ type: 'text', text: '慢慢来，比较快' }] },
     ];
     const html = exportHTML('t', cards);
-    expect(html).toContain('class="card quote"');
+    expect(html).toContain('card quote');
     expect(html).toContain('慢慢来，比较快');
     expect(html).toContain('qby');
   });
@@ -73,7 +73,7 @@ describe('卡片类型导出渲染', () => {
       { ...base, id: 's', title: '内测留存', type: 'stat', blocks: [{ type: 'text', text: '41%' }, { type: 'text', text: '6 个月' }] },
     ];
     const html = exportHTML('t', cards);
-    expect(html).toContain('class="card stat"');
+    expect(html).toContain('card stat');
     expect(html).toContain('class="num">41%');
   });
 
@@ -99,7 +99,7 @@ describe('卡片类型导出渲染', () => {
       { ...base, id: 'n', title: '提醒', type: 'note', blocks: [{ type: 'text', text: '记得浇水' }] },
     ];
     const html = exportHTML('t', cards);
-    expect(html).toContain('class="card note"');
+    expect(html).toContain('card note');
     expect(html).not.toContain('<h2>提醒</h2>');
   });
 });

@@ -52,3 +52,26 @@ describe('editorReducer 历史', () => {
     expect(s.present).toBe(doc);
   });
 });
+
+
+describe('批量动作', () => {
+  it('cards/moveMany 一次移动多张卡片且单次入栈', () => {
+    let s = initEditor(doc);
+    s = editorReducer(s, { type: 'cards/moveMany', moves: [{ id: 'a', x: 5, y: 6 }, { id: 'b', x: 7, y: 8 }] });
+    expect(s.present.cards[0]).toMatchObject({ x: 5, y: 6 });
+    expect(s.present.cards[1]).toMatchObject({ x: 7, y: 8 });
+    expect(s.past).toHaveLength(1); // 批量 = 一次撤销
+    s = editorReducer(s, { type: 'history/undo' });
+    expect(s.present.cards[0]).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it('cards/deleteMany 级联删除连线且单次入栈', () => {
+    let s = initEditor(doc);
+    s = editorReducer(s, { type: 'cards/deleteMany', ids: ['a', 'b'] });
+    expect(s.present.cards).toHaveLength(0);
+    expect(s.present.edges).toHaveLength(0);
+    expect(s.past).toHaveLength(1);
+    s = editorReducer(s, { type: 'history/undo' });
+    expect(s.present.cards).toHaveLength(2);
+  });
+});

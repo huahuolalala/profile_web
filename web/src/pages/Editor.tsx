@@ -10,6 +10,7 @@ import HintBar from '../components/HintBar';
 import ImportDialog from '../components/ImportDialog';
 import LayersPanel from '../components/LayersPanel';
 import Minimap from '../components/Minimap';
+import PreviewDialog from '../components/PreviewDialog';
 import TopBar, { type SaveState } from '../components/TopBar';
 import { cardsToDSL, dslToCards, parseDSL } from '../editor/dsl';
 import { exportHTML } from '../editor/exporter';
@@ -48,6 +49,7 @@ export default function Editor() {
   const [stageSize, setStageSize] = useState({ w: 1200, h: 800 });
   const [importOpen, setImportOpen] = useState(false);
   const [dslOpen, setDslOpen] = useState(false);
+  const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
   const [newEdgeId, setNewEdgeId] = useState<string | null>(null);
   // hover 某条连线时高亮其两端卡片
   const [edgeEnds, setEdgeEnds] = useState<[string, string] | null>(null);
@@ -225,14 +227,7 @@ export default function Editor() {
     return null;
   };
 
-  const onExportHTML = () => {
-    const blob = new Blob([exportHTML(doc.title, doc.cards)], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${doc.title || '简历'}.html`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
+  const onExportHTML = () => setHtmlPreview(exportHTML(doc.title, doc.cards));
 
   if (!loaded) {
     return (
@@ -343,6 +338,13 @@ export default function Editor() {
         </div>
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={onImport} />}
+      {htmlPreview !== null && (
+        <PreviewDialog
+          html={htmlPreview}
+          filename={`${doc.title || 'YumMe 画布'}.html`}
+          onClose={() => setHtmlPreview(null)}
+        />
+      )}
       {dslOpen && (
         <div className="modal-mask" onClick={() => setDslOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
