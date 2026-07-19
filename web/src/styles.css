@@ -257,7 +257,12 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
 .card-body p { line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 .card-body ul { padding-left: 16px; line-height: 1.7; }
-.card-body img { max-width: 100%; border-radius: var(--r-sm); }
+.card-body img {
+  max-width: 100%; border-radius: 4px;
+  background: #fff; padding: 6px 6px 20px;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 3px 10px rgba(60, 50, 20, 0.12);
+}
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag {
   background: #f4efe0; border: 1px solid rgba(60, 50, 20, 0.06);
@@ -511,12 +516,20 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .note-tape {
   position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-2deg);
   width: 72px; height: 20px;
-  background: rgba(240, 180, 41, 0.45);
+  background: var(--tape, rgba(240, 180, 41, 0.45));
   border-left: 1px dashed rgba(255, 255, 255, 0.6);
   border-right: 1px dashed rgba(255, 255, 255, 0.6);
   border-radius: 2px;
   box-shadow: 0 1px 3px rgba(60, 50, 20, 0.12);
 }
+/* 胶带颜色随卡片主题 */
+.theme-white .note-tape { --tape: rgba(160, 160, 160, 0.4); }
+.theme-yellow .note-tape { --tape: rgba(240, 180, 41, 0.5); }
+.theme-purple .note-tape { --tape: rgba(124, 92, 191, 0.4); }
+.theme-teal .note-tape { --tape: rgba(15, 157, 143, 0.35); }
+.theme-pink .note-tape { --tape: rgba(210, 95, 140, 0.35); }
+.theme-blue .note-tape { --tape: rgba(59, 130, 196, 0.35); }
+.theme-darkblue .note-tape { --tape: rgba(32, 53, 92, 0.4); }
 .note-body { padding-top: 18px; font-size: 13.5px; }
 
 /* --- 引言 quote --- */
@@ -625,4 +638,11 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 }
 @keyframes edge-draw {
   to { stroke-dashoffset: 0; }
+}
+
+/* ===== 连线 hover 联动高亮 ===== */
+.edges-layer g:hover .edge-path { stroke: #7c5cbf; stroke-width: 3; }
+.card.linked {
+  border-color: #7c5cbf;
+  box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.22), var(--shadow-lg);
 }

@@ -49,6 +49,13 @@ export default function Editor() {
   const [importOpen, setImportOpen] = useState(false);
   const [dslOpen, setDslOpen] = useState(false);
   const [newEdgeId, setNewEdgeId] = useState<string | null>(null);
+  // hover 某条连线时高亮其两端卡片
+  const [edgeEnds, setEdgeEnds] = useState<[string, string] | null>(null);
+  const onEdgeHover = (eid: string | null) => {
+    if (!eid) { setEdgeEnds(null); return; }
+    const e = doc.edges.find((x) => x.id === eid);
+    if (e) setEdgeEnds([e.fromId, e.toId]);
+  };
   // 连线箭头开关（持久化到 localStorage）
   const [showArrows, setShowArrows] = useState(() => localStorage.getItem('pw_arrows') !== '0');
   const toggleArrows = () => {
@@ -289,6 +296,7 @@ export default function Editor() {
               showArrows={showArrows}
               newEdgeId={newEdgeId}
               onEdgeClick={(eid) => dispatch({ type: 'edge/delete', id: eid })}
+              onEdgeHover={onEdgeHover}
             />
             {doc.cards.map((c) => (
               <CardView
@@ -296,6 +304,7 @@ export default function Editor() {
                 selected={c.id === selectedId}
                 editing={c.id === editingId}
                 connectMode={connectFrom !== null}
+                linked={!!edgeEnds && (edgeEnds[0] === c.id || edgeEnds[1] === c.id)}
                 onClick={onCardClick}
                 onEdit={(cid) => { if (connectFrom === null) setEditingId(cid); }}
                 onDrag={(cid, x, y) => setDragPos((m) => ({ ...m, [cid]: { x, y } }))}

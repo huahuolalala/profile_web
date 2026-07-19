@@ -9,6 +9,7 @@ interface Props {
   selected: boolean;
   editing: boolean;
   connectMode: boolean;
+  linked?: boolean;
   onClick: (id: string) => void;
   onEdit: (id: string) => void;
   onDrag: (id: string, x: number, y: number) => void;
@@ -112,7 +113,7 @@ export default function CardView(p: Props) {
     p.onUpdate({ ...c, blocks });
   };
 
-  const cls = `card type-${c.type} theme-${c.theme} ${p.selected ? 'selected' : ''} ${c.visible ? '' : 'card-hidden'} ${p.connectMode ? 'connectable' : ''}`;
+  const cls = `card type-${c.type} theme-${c.theme} ${p.selected ? 'selected' : ''} ${p.linked ? 'linked' : ''} ${c.visible ? '' : 'card-hidden'} ${p.connectMode ? 'connectable' : ''}`;
   const style: React.CSSProperties = { left: c.x, top: c.y, width: c.w };
   if (c.type === 'note') (style as Record<string, string | number>)['--note-rot'] = noteAngle(c.id);
 

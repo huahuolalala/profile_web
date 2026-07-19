@@ -27,10 +27,11 @@ interface Props {
   showArrows: boolean;
   newEdgeId?: string | null;
   onEdgeClick: (id: string) => void;
+  onEdgeHover?: (id: string | null) => void;
 }
 
 /** 连线层：手绘蜡笔风（feTurbulence 抖动位移），箭头可开关 */
-export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode, showArrows, newEdgeId, onEdgeClick }: Props) {
+export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode, showArrows, newEdgeId, onEdgeClick, onEdgeHover }: Props) {
   const byId = new Map(cards.map((c) => [c.id, c]));
   return (
     <svg className="edges-layer">
@@ -57,6 +58,8 @@ export default function EdgesLayer({ cards, edges, heights, dragPos, connectMode
             key={e.id}
             onPointerDown={(ev) => ev.stopPropagation()}
             onClick={() => connectMode && onEdgeClick(e.id)}
+            onMouseEnter={() => onEdgeHover?.(e.id)}
+            onMouseLeave={() => onEdgeHover?.(null)}
           >
             <path d={d} className="edge-hit" />
             <path
