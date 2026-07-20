@@ -60,6 +60,7 @@ const PROJECT_TITLE = /(项目|作品|案例|portfolio|project|case|work)/i;
 const PROFILE_TITLE = /(个人|简介|关于|履历|profile|about|intro)/i;
 const SKILLS_TITLE = /(能力|技能|专长|技术栈|skill|capabilit|expertise)/i;
 const STATUS_TITLE = /(状态|计划|事项|工作台|待办|todo|status|plan)/i;
+const PORTFOLIO_LINK = /(作品入口|项目入口|作品集|全部作品|完整作品|案例集|portfolio|selected work|case studies|work samples)/i;
 
 const JOURNAL_ROLES: JournalLayoutRole[] = [
   'hero',
@@ -492,6 +493,39 @@ function sortCardsByIntent(cards: Card[]): Card[] {
   });
 }
 
+function isPortfolioLink(card: Card): boolean {
+  if (card.type !== 'link') return false;
+  return PORTFOLIO_LINK.test([
+    card.title,
+    firstText(card.blocks),
+    firstText(card.blocks, 1),
+  ].join(' '));
+}
+
+function localNarrativeRank(card: Card): number {
+  const role = inferJournalRole(card);
+  if (role === 'hero' || role === 'media' || role === 'profile') return 0;
+  if (role === 'project') return 10;
+  if (role === 'link' && isPortfolioLink(card)) return 11;
+  if (role === 'skills') return 20;
+  if (role === 'stat') return 21;
+  if (role === 'body') return 22;
+  if (role === 'timeline') return 30;
+  if (role === 'note') return 40;
+  if (role === 'todo') return 41;
+  if (role === 'link') return 42;
+  return 50;
+}
+
+function sortCardsForLocalLayout(cards: Card[]): Card[] {
+  if (cards.some(hasLayoutIntent)) return sortCardsByIntent(cards);
+  return [...cards].sort((a, b) => (
+    localNarrativeRank(a) - localNarrativeRank(b)
+    || a.y - b.y
+    || a.x - b.x
+  ));
+}
+
 function isFullRowCard(card: Card): boolean {
   const signal = journalLayoutSignal(card);
   return signal.preferredSpan >= 12
@@ -507,6 +541,21 @@ function isFeatureCard(card: Card): boolean {
     || signal.role === 'skills'
     || signal.preferredSpan >= 7
     || signal.weight >= 7.4;
+}
+
+function featureCompanionIndex(current: Card, cards: Card[]): number {
+  const currentWeight = journalLayoutSignal(current).weight;
+  let bestIndex = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  cards.slice(0, 5).forEach((card, index) => {
+    if (isFullRowCard(card)) return;
+    const distance = Math.abs(currentWeight - journalLayoutSignal(card).weight);
+    if (distance < bestDistance) {
+      bestIndex = index;
+      bestDistance = distance;
+    }
+  });
+  return bestIndex;
 }
 
 function singleCardSpan(card: Card, mode: 'ai' | 'local'): number {
@@ -550,7 +599,7 @@ function patternSpans(
   if (normalized === 'single') return [singleCardSpan(cards[0], mode)];
   if (normalized === 'quartet') return [3, 3, 3, 3];
   if (normalized === 'trio') {
-    return mode === 'ai' ? [4, 4, 4] : assignSpansByScore(cards, [3, 4, 4]);
+    return [4, 4, 4];
   }
   if (normalized === 'balanced') {
     if (mode === 'ai') return [6, 6];
@@ -623,7 +672,7 @@ function localPatternForSupportCount(count: number): AIJournalLayoutPattern {
 function layoutCardsLocally(cards: Card[], startRow = 0): AutoJournalLayoutResult & { nextRow: number } {
   const layout = new Map<string, AutoJournalLayout>();
   const orderedCards: Card[] = [];
-  const pending = sortCardsByIntent(cards);
+  const pending = sortCardsForLocalLayout(cards);
   let row = startRow;
 
   while (pending.length) {
@@ -634,7 +683,7 @@ function layoutCardsLocally(cards: Card[], startRow = 0): AutoJournalLayoutResul
     }
 
     if (isFeatureCard(current)) {
-      const companionIndex = pending.findIndex((card, index) => index < 4 && !isFullRowCard(card));
+      const companionIndex = featureCompanionIndex(current, pending);
       if (companionIndex >= 0) {
         const [companion] = pending.splice(companionIndex, 1);
         const pattern = journalLayoutSignal(current).weight >= journalLayoutSignal(companion).weight

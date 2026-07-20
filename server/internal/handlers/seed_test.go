@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// 注册后应自动获得覆盖全部素材类型、版面角色和隐藏状态的 YumMe Example。
+// 注册后应自动获得覆盖全部素材类型、版面角色和隐藏状态的示例手账。
 func TestRegisterSeedsSampleResume(t *testing.T) {
 	h, _ := newTestApp(t)
 	tok := registerToken(t, h, "seeded")
@@ -27,7 +27,7 @@ func TestRegisterSeedsSampleResume(t *testing.T) {
 	if len(list.Resumes) != 1 {
 		t.Fatalf("want 1 seeded resume, got %d", len(list.Resumes))
 	}
-	if !strings.HasPrefix(list.Resumes[0].Title, "YumMe Example") {
+	if list.Resumes[0].Title != "林晚晴 · 产品设计作品集" {
 		t.Fatalf("unexpected title: %s", list.Resumes[0].Title)
 	}
 
@@ -36,6 +36,8 @@ func TestRegisterSeedsSampleResume(t *testing.T) {
 		Resume struct {
 			Style string `json:"style"`
 			Cards []struct {
+				ID      string           `json:"id"`
+				Title   string           `json:"title"`
 				Type    string           `json:"type"`
 				Theme   string           `json:"theme"`
 				W       float64          `json:"w"`
@@ -64,12 +66,28 @@ func TestRegisterSeedsSampleResume(t *testing.T) {
 	hidden := 0
 	hasImage := false
 	hasAsymmetricLayout := false
+	visibleTitles := []string{}
+	var lastVisible struct {
+		ID      string           `json:"id"`
+		Title   string           `json:"title"`
+		Type    string           `json:"type"`
+		Theme   string           `json:"theme"`
+		W       float64          `json:"w"`
+		Column  *int             `json:"column"`
+		Span    *int             `json:"span"`
+		Align   string           `json:"align"`
+		Visible bool             `json:"visible"`
+		Blocks  []map[string]any `json:"blocks"`
+	}
 	for _, c := range got.Resume.Cards {
 		themes[c.Theme] = true
 		types[c.Type] = true
 		widths[c.W] = true
 		if !c.Visible {
 			hidden++
+		} else {
+			visibleTitles = append(visibleTitles, c.Title)
+			lastVisible = c
 		}
 		if c.Column != nil && c.Span != nil && *c.Column > 1 && *c.Span != 6 {
 			hasAsymmetricLayout = true
@@ -100,5 +118,27 @@ func TestRegisterSeedsSampleResume(t *testing.T) {
 	}
 	if !hasAsymmetricLayout {
 		t.Fatal("sample should demonstrate asymmetric 12-column layout")
+	}
+	wantOrder := []string{
+		"林晚晴 · 独立产品设计师",
+		"核心项目 · ColaOS",
+		"作品入口",
+		"产品设计经验",
+		"能力与方法",
+		"职业时间线",
+		"当前可合作",
+		"合作启动清单",
+		"短观点",
+	}
+	if strings.Join(visibleTitles, "|") != strings.Join(wantOrder, "|") {
+		t.Fatalf("sample narrative order changed: got %v", visibleTitles)
+	}
+	if lastVisible.Type != "quote" || lastVisible.Theme == "darkblue" || lastVisible.W != 180 {
+		t.Fatalf("quote should close as a lightweight card, got %+v", lastVisible)
+	}
+	for _, c := range got.Resume.Cards {
+		if c.Type == "todo" && c.Title != "合作启动清单" {
+			t.Fatalf("todo should describe collaboration flow, got %q", c.Title)
+		}
 	}
 }

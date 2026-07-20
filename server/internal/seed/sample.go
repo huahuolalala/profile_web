@@ -1,4 +1,4 @@
-// Package seed 为新注册账号播种一本可直接改写的 YumMe Example 手账。
+// Package seed 为新注册账号播种一本可直接改写的示例手账。
 package seed
 
 import (
@@ -11,7 +11,7 @@ import (
 	"sort"
 )
 
-//go:embed assets/studio-field.jpg
+//go:embed assets/product-design-workspace.jpg
 var sampleAssets embed.FS
 
 type block map[string]any
@@ -45,36 +45,12 @@ func sampleCards(photo string) []card {
 			column: 1, span: 12, align: "center", visible: true,
 			blocks: []block{
 				image(photo),
-				text("设计从观察真实世界开始。把复杂系统整理成普通人愿意使用的产品，关注 AI 工具、创作者体验与从 0 到 1 的产品定义。"),
-				tags("产品策略", "交互设计", "设计系统", "创意开发"),
+				text("为 AI 产品、创作者工具和高信息密度工作台做从 0 到 1 的产品定义、交互系统与可落地原型。"),
+				tags("产品策略", "交互设计", "设计系统", "AI Native"),
 			},
 		},
 		{
-			id: "note", title: "当前状态", typ: "note", theme: "yellow", y: 100, w: 180,
-			column: 1, span: 3, align: "center", visible: true,
-			blocks: []block{
-				text("开放 1 个八月合作档期，适合 AI 产品、创作者工具与复杂工作流。"),
-				tags("可约项目", "远程优先"),
-			},
-		},
-		{
-			id: "stat", title: "产品设计经验", typ: "stat", theme: "teal", x: 180, y: 100, w: 180,
-			column: 4, span: 3, align: "center", visible: true,
-			blocks: []block{
-				text("7 年"),
-				text("覆盖研究、策略、交互、视觉与落地"),
-			},
-		},
-		{
-			id: "quote", title: "林晚晴", typ: "quote", theme: "darkblue", x: 360, y: 100, w: 180,
-			column: 7, span: 6, align: "center", visible: true,
-			blocks: []block{
-				text("先把问题讲清楚，再把界面做漂亮。"),
-				text("我的设计原则"),
-			},
-		},
-		{
-			id: "project", title: "代表项目 · ColaOS", theme: "purple", y: 200, w: 360,
+			id: "project", title: "核心项目 · ColaOS", theme: "purple", y: 100, w: 360,
 			column: 1, span: 7, align: "center", visible: true,
 			blocks: []block{
 				text("面向独立创作者的个人知识操作系统，从模糊概念推进到可验证产品。"),
@@ -84,16 +60,32 @@ func sampleCards(photo string) []card {
 					"与工程协作完成首个可用版本",
 					"用连续访谈驱动三轮关键迭代",
 				),
-				tags("0 到 1", "AI Native", "设计系统"),
+				tags("0 到 1", "AI Native", "创作者工具"),
 			},
 		},
 		{
-			id: "skills", title: "能力地图", theme: "white", x: 360, y: 200, w: 360,
+			id: "portfolio", title: "作品入口", typ: "link", theme: "blue", x: 360, y: 100, w: 360,
 			column: 8, span: 5, align: "center", visible: true,
 			blocks: []block{
-				text("从问题定义到上线复盘，保持同一条叙事线。"),
+				text("https://linwanqing.design"),
+				text("ColaOS、NORUSH 编辑器与设计系统案例。每个项目都保留背景、判断、过程和结果。"),
+			},
+		},
+		{
+			id: "stat", title: "产品设计经验", typ: "stat", theme: "darkblue", y: 200, w: 180,
+			column: 1, span: 3, align: "center", visible: true,
+			blocks: []block{
+				text("7 年"),
+				text("覆盖研究、策略、交互、视觉与落地，长期聚焦早期产品与复杂工具。"),
+			},
+		},
+		{
+			id: "skills", title: "能力与方法", theme: "teal", x: 180, y: 200, w: 360,
+			column: 4, span: 9, align: "center", visible: true,
+			blocks: []block{
+				text("把问题定义、信息架构、交互原型和工程协作放在同一条叙事线里推进。"),
 				tags("用户研究", "产品策略", "信息架构", "交互设计", "视觉设计", "原型验证", "前端协作", "AIGC 工作流"),
-				list("擅长复杂工具与高信息密度界面", "能用代码完成高保真验证", "习惯用真实反馈替代主观争论"),
+				list("擅长复杂工具与高密度界面", "用代码完成高保真验证", "用真实反馈替代主观争论"),
 			},
 		},
 		{
@@ -109,23 +101,31 @@ func sampleCards(photo string) []card {
 			},
 		},
 		{
-			id: "portfolio", title: "完整作品集", typ: "link", theme: "blue", y: 400, w: 360,
-			column: 1, span: 5, align: "center", visible: true,
+			id: "note", title: "当前可合作", typ: "note", theme: "yellow", y: 400, w: 180,
+			column: 1, span: 4, align: "center", visible: true,
 			blocks: []block{
-				text("https://linwanqing.design"),
-				text("查看 ColaOS、NORUSH 编辑器与设计系统案例。每个项目都包含背景、判断、过程和结果。"),
+				text("开放 1 个八月合作档期，适合 AI 产品、创作者工具与复杂工作流。"),
+				tags("项目制", "远程优先", "可深度参与"),
 			},
 		},
 		{
-			id: "todo", title: "本周工作台", typ: "todo", theme: "purple", x: 360, y: 400, w: 360,
-			column: 6, span: 7, align: "center", visible: true,
+			id: "todo", title: "合作启动清单", typ: "todo", theme: "purple", x: 180, y: 400, w: 360,
+			column: 5, span: 8, align: "center", visible: true,
 			blocks: []block{
 				block{"type": "todo", "items": []block{
-					{"text": "完成新项目的访谈提纲", "done": true},
-					{"text": "整理设计系统组件清单", "done": true},
-					{"text": "为关键流程制作可点击原型", "done": false},
-					{"text": "和工程确认第一阶段范围", "done": false},
+					{"text": "确认目标用户、核心场景和成功指标", "done": true},
+					{"text": "梳理现有资料、竞品与约束条件", "done": true},
+					{"text": "用一周产出关键流程原型", "done": false},
+					{"text": "和团队确认第一阶段交付范围", "done": false},
 				}},
+			},
+		},
+		{
+			id: "quote", title: "短观点", typ: "quote", theme: "white", y: 500, w: 180,
+			column: 4, span: 6, align: "center", visible: true,
+			blocks: []block{
+				text("先把问题讲清楚，再把界面做漂亮。"),
+				text("林晚晴"),
 			},
 		},
 		{
@@ -141,7 +141,7 @@ func sampleCards(photo string) []card {
 
 // CreateSampleResume 为新用户插入一本覆盖全部素材类型、版面角色和隐藏状态的样例手账。
 func CreateSampleResume(ctx context.Context, d *sql.DB, userID int64) error {
-	photoBytes, err := sampleAssets.ReadFile("assets/studio-field.jpg")
+	photoBytes, err := sampleAssets.ReadFile("assets/product-design-workspace.jpg")
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func CreateSampleResume(ctx context.Context, d *sql.DB, userID int64) error {
 
 	res, err := tx.ExecContext(ctx,
 		"INSERT INTO resumes (user_id, title, journal_style) VALUES (?, ?, ?)",
-		userID, "YumMe Example：林晚晴作品集", "journal")
+		userID, "林晚晴 · 产品设计作品集", "journal")
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { journalLayoutWidth } from './presentation';
-import { exportHTML, sortForExport } from './exporter';
+import { exportHTML, journalExportCaptureHeight, sortForExport } from './exporter';
 import type { Card } from '../types';
 
 const mk = (id: string, x: number, y: number, visible = true): Card => ({
@@ -11,6 +11,30 @@ describe('sortForExport', () => {
   it('按 y 优先、x 次之排序，过滤不可见', () => {
     const out = sortForExport([mk('b', 500, 0), mk('a', 0, 0), mk('c', 0, 300), mk('d', 0, -50, false)]);
     expect(out.map((c) => c.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('journalExportCaptureHeight', () => {
+  it('按真实内容底边加页面内边距裁切，不保留编辑按钮占据的高度', () => {
+    expect(journalExportCaptureHeight({
+      pageTop: 0,
+      headerBottom: 132,
+      gridBottom: 1461,
+      emptyBottom: 0,
+      paddingBottom: 54,
+      borderBottom: 1,
+    })).toBe(1516);
+  });
+
+  it('空白页仍会包含空状态区域和底部内边距', () => {
+    expect(journalExportCaptureHeight({
+      pageTop: 20,
+      headerBottom: 128,
+      gridBottom: 0,
+      emptyBottom: 760,
+      paddingBottom: 30,
+      borderBottom: 1,
+    })).toBe(771);
   });
 });
 

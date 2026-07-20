@@ -80,3 +80,15 @@ func TestClientDoesNotRequireEmbeddedImageData(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSystemPromptPrioritizesPortfolioNarrative(t *testing.T) {
+	for _, want := range []string{
+		"项目与作品入口优先相邻",
+		"todo 表示行动清单或协作步骤，不默认作为最后落点",
+		"quote 只作为短观点或注脚，不能因为 darkblue 等深色主题被提升为主视觉",
+	} {
+		if !strings.Contains(systemPrompt, want) {
+			t.Fatalf("system prompt missing %q", want)
+		}
+	}
+}

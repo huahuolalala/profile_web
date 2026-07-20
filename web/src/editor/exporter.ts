@@ -6,6 +6,28 @@ export function sortForExport(cards: Card[]): Card[] {
   return cards.filter((c) => c.visible).sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
+interface JournalExportCaptureBounds {
+  pageTop: number;
+  headerBottom: number;
+  gridBottom: number;
+  emptyBottom: number;
+  paddingBottom: number;
+  borderBottom: number;
+}
+
+export function journalExportCaptureHeight(bounds: JournalExportCaptureBounds): number {
+  const contentBottom = Math.max(
+    bounds.pageTop,
+    bounds.headerBottom,
+    bounds.gridBottom,
+    bounds.emptyBottom,
+  );
+  return Math.max(
+    1,
+    Math.ceil(contentBottom - bounds.pageTop + bounds.paddingBottom + bounds.borderBottom),
+  );
+}
+
 /** 每个主题一整套手账配色：纸底、标题墨色、强调色、荧光笔高亮 */
 interface Palette { paper: string; paper2: string; ink: string; accent: string; hi: string; }
 const PALETTES: Record<string, Palette> = {
@@ -286,14 +308,14 @@ export function exportHTML(title: string, cards: Card[], style: JournalStyle = '
     color:#fff; background:var(--accent);
     clip-path:polygon(0 0,92% 0,100% 50%,92% 100%,0 100%,5% 50%);
   }
-  .card img { width:100%; max-width: 100%; aspect-ratio:16/5.5; object-fit:cover; border-radius: 3px; display: block; margin-top: 4px;
+  .card img { width:100%; max-width: 100%; aspect-ratio:16/5.2; object-fit:cover; border-radius: 3px; display: block; margin-top: 4px;
     background: #fff; padding: 7px 7px 22px; border: 1px solid #e8e2d2; box-shadow: 0 3px 10px rgba(61,47,16,.14);
     transform: rotate(calc(var(--rot) * -1)); }
   .block + .block { margin-top: 13px; }
 
   /* 自动识别的时间线 */
   .timeline {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
     gap:14px; list-style:none; padding:10px 0 2px;
   }
   .timeline li {
@@ -316,7 +338,7 @@ export function exportHTML(title: string, cards: Card[], style: JournalStyle = '
     font-size:15px; font-weight:800; line-height:1.3;
   }
   .timeline p { font-size:13px; line-height:1.55; }
-  @media (max-width:560px) {
+  @media (max-width:680px) {
     .timeline { grid-template-columns:1fr; }
     .timeline li { min-height:0; transform:none; }
   }
@@ -478,7 +500,19 @@ export async function printJournalPDF(title: string, page: HTMLElement | null): 
       import('jspdf'),
     ]);
     const width = Math.ceil(page.scrollWidth);
-    const height = Math.ceil(page.scrollHeight);
+    const pageRect = page.getBoundingClientRect();
+    const pageStyle = window.getComputedStyle(page);
+    const elementBottom = (selector: string): number => (
+      page.querySelector<HTMLElement>(selector)?.getBoundingClientRect().bottom ?? 0
+    );
+    const height = journalExportCaptureHeight({
+      pageTop: pageRect.top,
+      headerBottom: elementBottom('.journal-page-header'),
+      gridBottom: elementBottom('.journal-grid'),
+      emptyBottom: elementBottom('.journal-empty'),
+      paddingBottom: Number.parseFloat(pageStyle.paddingBottom) || 0,
+      borderBottom: Number.parseFloat(pageStyle.borderBottomWidth) || 0,
+    });
     const maxCanvasHeight = 28000;
     const maxCanvasArea = 80_000_000;
     const scale = Math.max(1, Math.min(
@@ -499,6 +533,9 @@ export async function printJournalPDF(title: string, page: HTMLElement | null): 
         const clonedPage = clonedDocument.querySelector<HTMLElement>('.journal-page');
         if (!clonedPage) return;
         clonedPage.classList.add('journal-export-capture');
+        clonedPage.style.height = `${height}px`;
+        clonedPage.style.minHeight = '0';
+        clonedPage.style.overflow = 'hidden';
         clonedPage.querySelectorAll('.selected').forEach((element) => element.classList.remove('selected'));
         clonedPage.querySelectorAll(
           '.journal-card-toolbar, .journal-resize-handle, .journal-page-add',

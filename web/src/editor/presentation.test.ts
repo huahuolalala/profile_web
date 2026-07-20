@@ -190,14 +190,14 @@ describe('journal presentation', () => {
     expect(journalCardAlign(cards[0])).toBe('end');
   });
 
-  it('一键排版为三张轻量卡生成带呼吸空间的 3/4/4 错落分栏', () => {
+  it('一键排版为三张轻量卡生成稳定对齐的 4/4/4 分栏', () => {
     const arranged = autoLayoutJournalCards([
       card('note', 0, { type: 'note' }),
       card('stat', 100, { type: 'stat' }),
       card('quote', 200, { type: 'quote' }),
     ]);
-    expect(arranged.reduce((sum, item) => sum + journalCardSpan(item), 0)).toBe(11);
-    expect(arranged.map(journalCardSpan).sort((a, b) => a - b)).toEqual([3, 4, 4]);
+    expect(arranged.reduce((sum, item) => sum + journalCardSpan(item), 0)).toBe(12);
+    expect(arranged.map(journalCardSpan)).toEqual([4, 4, 4]);
     expect(buildJournalPlacements(arranged).get('quote')?.row).toBe(1);
   });
 
@@ -279,7 +279,7 @@ describe('journal presentation', () => {
     });
   });
 
-  it('本地策略会用标题语义把项目与能力组成重点行，避免只按连续小卡凑行', () => {
+  it('本地策略按作品集叙事排序，并把项目与能力组成重点行', () => {
     const arranged = autoLayoutJournalCards([
       card('status', 0, { type: 'note', title: '当前状态' }),
       card('project', 100, {
@@ -293,12 +293,62 @@ describe('journal presentation', () => {
       card('quote', 300, { type: 'quote' }),
     ]);
 
-    expect(arranged.map((item) => item.id)).toEqual(['status', 'project', 'skills', 'quote']);
-    expect(arranged.map(journalCardSpan)).toEqual([6, 7, 5, 6]);
-    expect(arranged.map(journalCardColumn)).toEqual([4, 1, 8, 4]);
+    expect(arranged.map((item) => item.id)).toEqual(['project', 'skills', 'status', 'quote']);
+    expect(arranged.map(journalCardSpan)).toEqual([7, 5, 5, 5]);
+    expect(arranged.map(journalCardColumn)).toEqual([1, 8, 2, 7]);
   });
 
-  it('连续的非满栏行会交替保留左右留白', () => {
+  it('本地策略优先展示核心作品入口，再展示证明、经历与行动收束', () => {
+    const arranged = autoLayoutJournalCards([
+      card('status', 0, { type: 'note', title: '当前可合作' }),
+      card('timeline', 100, {
+        title: '职业时间线',
+        blocks: [{ type: 'list', items: ['2024 至今 独立设计师', '2021-2024 产品设计师'] }],
+      }),
+      card('quote', 200, { type: 'quote' }),
+      card('portfolio', 300, {
+        type: 'link',
+        title: '作品入口',
+        blocks: [
+          { type: 'text', text: 'https://linwanqing.design' },
+          { type: 'text', text: '查看完整案例与过程记录' },
+        ],
+      }),
+      card('skills', 400, {
+        title: '能力地图',
+        blocks: [{ type: 'tags', items: ['研究', '策略', '架构', '交互', '视觉', '原型'] }],
+      }),
+      card('project', 500, {
+        title: '代表项目 · ColaOS',
+        blocks: [{ type: 'text', text: '复杂系统'.repeat(80) }],
+      }),
+      card('stat', 600, { type: 'stat', title: '产品设计经验' }),
+      card('todo', 700, { type: 'todo', title: '合作方式' }),
+      card('cover', 800, {
+        title: '林晚晴 · 独立产品设计师',
+        blocks: [{ type: 'image', src: 'data:image/png;base64,abc' }],
+      }),
+    ]);
+
+    expect(arranged.map((item) => item.id)).toEqual([
+      'cover',
+      'project',
+      'skills',
+      'portfolio',
+      'stat',
+      'timeline',
+      'status',
+      'todo',
+      'quote',
+    ]);
+    expect(arranged.find((item) => item.id === 'project')).toMatchObject({ column: 1, span: 7 });
+    expect(arranged.find((item) => item.id === 'skills')).toMatchObject({ column: 8, span: 5 });
+    expect(arranged.find((item) => item.id === 'portfolio')).toMatchObject({ column: 2, span: 5 });
+    expect(arranged.find((item) => item.id === 'stat')).toMatchObject({ column: 7, span: 5 });
+    expect(arranged.find((item) => item.id === 'timeline')).toMatchObject({ column: 1, span: 12 });
+  });
+
+  it('连续三卡行都完整占满 12 栏并保持稳定对齐', () => {
     const arranged = autoLayoutJournalCards([
       card('a', 0, { type: 'note' }),
       card('b', 100, { type: 'stat' }),
@@ -310,8 +360,8 @@ describe('journal presentation', () => {
     const firstRow = arranged.slice(0, 3);
     const secondRow = arranged.slice(3, 6);
     expect(Math.min(...firstRow.map(journalCardColumn))).toBe(1);
-    expect(Math.max(...firstRow.map((item) => journalCardColumn(item) + journalCardSpan(item) - 1))).toBe(11);
-    expect(Math.min(...secondRow.map(journalCardColumn))).toBe(2);
+    expect(Math.max(...firstRow.map((item) => journalCardColumn(item) + journalCardSpan(item) - 1))).toBe(12);
+    expect(Math.min(...secondRow.map(journalCardColumn))).toBe(1);
     expect(Math.max(...secondRow.map((item) => journalCardColumn(item) + journalCardSpan(item) - 1))).toBe(12);
     expect(new Set([...buildJournalPlacements(arranged).values()].map((item) => item.row))).toEqual(
       new Set([1, 2]),

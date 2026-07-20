@@ -1726,6 +1726,7 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
   margin: 0 auto;
   position: relative;
   padding: clamp(30px, 4vw, 54px);
+  padding-bottom: clamp(58px, 6vw, 78px);
   background-color: #fff;
   background-image:
     repeating-linear-gradient(0deg, rgba(85, 105, 122, 0.025) 0 1px, transparent 1px 28px),
@@ -1975,7 +1976,7 @@ body.journal-drag-active .journal-card:hover {
   clip-path: polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%, 5% 50%);
 }
 .journal-photo { padding: 7px 7px 22px; background: #fff; border: 1px solid #ddd9d0; box-shadow: 0 4px 10px rgba(45, 48, 50, 0.12); }
-.journal-photo img { width: 100%; aspect-ratio: 16 / 5.5; object-fit: cover; display: block; border-radius: 2px; }
+.journal-photo img { width: 100%; aspect-ratio: 16 / 5.2; object-fit: cover; display: block; border-radius: 2px; }
 .journal-card-toolbar {
   position: absolute;
   right: 7px;
@@ -2125,7 +2126,7 @@ body.journal-resize-active {
 /* 智能时间线 */
 .journal-timeline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 13px;
   list-style: none;
   padding: 10px 0 3px;
@@ -2163,6 +2164,9 @@ body.journal-resize-active {
   line-height: 1.3;
 }
 .journal-timeline p { font-size: 12px; line-height: 1.55; }
+@media (max-width: 680px) {
+  .journal-timeline { grid-template-columns: 1fr; }
+}
 
 /* 便签 */
 .journal-card-note {
@@ -2174,7 +2178,7 @@ body.journal-resize-active {
 }
 .journal-card-note:hover { transform: rotate(0deg) translateY(-2px); }
 .journal-note-face { min-height: 148px; position: relative; padding-top: 22px; }
-.journal-card-note .journal-blocks { padding: 8px 15px 29px; }
+.journal-card-note .journal-blocks { padding: 8px 15px 35px; }
 .journal-card-note .journal-block p { line-height: 28px; }
 .journal-tape {
   width: 74px;
@@ -2193,7 +2197,7 @@ body.journal-resize-active {
 .journal-note-caption {
   position: absolute;
   right: 10px;
-  bottom: 7px;
+  bottom: 11px;
   color: color-mix(in srgb, var(--card-ink) 65%, transparent);
   font-size: 9.5px;
   font-weight: 650;
@@ -2212,7 +2216,7 @@ body.journal-resize-active {
   grid-template-columns: 48px minmax(0, 1fr);
   align-items: start;
   gap: 6px 16px;
-  padding: 20px 21px 18px;
+  padding: 21px 22px 24px;
 }
 .journal-quote-face > svg { color: var(--card-accent); opacity: 0.58; }
 .journal-quote-face blockquote {
