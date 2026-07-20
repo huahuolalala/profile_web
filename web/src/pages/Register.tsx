@@ -19,7 +19,8 @@ export default function Register() {
         body: { username, password },
       });
       setToken(token);
-      nav('/');
+      // 新用户直接进入「我的画布」，第一时间看到赠送的 YumMe Example
+      nav('/mind');
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
