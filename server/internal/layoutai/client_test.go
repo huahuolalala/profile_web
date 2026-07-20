@@ -84,6 +84,10 @@ func TestClientDoesNotRequireEmbeddedImageData(t *testing.T) {
 func TestSystemPromptPrioritizesPortfolioNarrative(t *testing.T) {
 	for _, want := range []string{
 		"项目与作品入口优先相邻",
+		"一页最多一个 hero",
+		"普通项目案例即使 HasImage=true 也不是封面",
+		"时间线必须使用 single",
+		"Summary 很短且都无图片",
 		"todo 表示行动清单或协作步骤，不默认作为最后落点",
 		"quote 只作为短观点或注脚，不能因为 darkblue 等深色主题被提升为主视觉",
 	} {

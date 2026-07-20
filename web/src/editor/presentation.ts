@@ -187,7 +187,11 @@ export function timelineBlockIndex(card: Card): number {
 
 export function splitTimelineItem(item: string, index: number): { date: string; content: string } {
   const match = item.match(
-    /^((?:19|20)\d{2}(?:\s*(?:(?:-|至|到)\s*(?:19|20)\d{2}|至今|现在))?)\s*[·:：]?\s*(.*)$/,
+    /^((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2})\s*[·:：]?\s*(.*)$/,
+  ) ?? item.match(
+    /^((?:19|20)\d{2}(?:[-/.]\d{1,2}(?:[-/.]\d{1,2})?)?\s*(?:-|至|到)\s*(?:至今|现在))\s*[·:：]?\s*(.*)$/,
+  ) ?? item.match(
+    /^((?:19|20)\d{2}(?:[-/.]\d{1,2}(?:[-/.]\d{1,2})?)?)\s*[·:：]?\s*(.*)$/,
   );
   return {
     date: match?.[1] || `阶段 ${index + 1}`,
@@ -277,11 +281,14 @@ function listLikeItemCount(card: Card): number {
   }, 0);
 }
 
+function isHeavyTodoCard(card: Card): boolean {
+  return card.type === 'todo' && listLikeItemCount(card) >= 7;
+}
+
 function inferJournalRole(card: Card): JournalLayoutRole {
   const explicit = cardLayoutIntent(card).role;
   if (explicit) return explicit;
   if (timelineBlockIndex(card) >= 0) return 'timeline';
-  if (hasContentImage(card)) return 'media';
   if (card.type === 'stat') return 'stat';
   if (card.type === 'quote') return 'quote';
   if (card.type === 'link') return 'link';
@@ -290,6 +297,7 @@ function inferJournalRole(card: Card): JournalLayoutRole {
   if (PROJECT_TITLE.test(card.title)) return 'project';
   if (SKILLS_TITLE.test(card.title)) return 'skills';
   if (PROFILE_TITLE.test(card.title)) return 'profile';
+  if (hasContentImage(card)) return 'media';
   return 'body';
 }
 
@@ -300,9 +308,12 @@ function journalLayoutSignal(card: Card): JournalLayoutSignal {
   let weight = score;
   let preferredSpan = recommendedJournalSpan(card);
 
-  if (role === 'hero' || role === 'media' || role === 'timeline') {
+  if (role === 'hero' || role === 'timeline') {
     weight += 5;
     preferredSpan = 12;
+  } else if (role === 'media') {
+    weight += 2;
+    preferredSpan = Math.max(7, Math.min(8, preferredSpan));
   } else if (role === 'project') {
     weight += 2.5;
     preferredSpan = Math.max(7, Math.min(8, preferredSpan));
@@ -332,11 +343,12 @@ function journalLayoutSignal(card: Card): JournalLayoutSignal {
 
 export function recommendedJournalSpan(card: Card): number {
   if (timelineBlockIndex(card) >= 0) return 12;
-  if (hasContentImage(card)) return 12;
+  if (cardLayoutIntent(card).role === 'hero') return 12;
 
   const score = journalContentScore(card);
   const itemCount = listLikeItemCount(card);
 
+  if (hasContentImage(card)) return score > 11 ? 10 : 8;
   if (card.type === 'quote') return score > 5 ? 7 : 5;
   if (card.type === 'link') return score > 6 ? 7 : 5;
   if (card.type === 'note') return score > 7 ? 7 : score > 3.5 ? 5 : 3;
@@ -502,16 +514,29 @@ function isPortfolioLink(card: Card): boolean {
   ].join(' '));
 }
 
-function localNarrativeRank(card: Card): number {
+function findLocalHeroId(cards: Card[]): string | undefined {
+  const explicitHero = cards.find((card) => cardLayoutIntent(card).role === 'hero');
+  if (explicitHero) return explicitHero.id;
+  const profileImage = cards.find((card) => (
+    hasContentImage(card)
+    && (PROFILE_TITLE.test(card.title) || /(封面|cover)/i.test(card.title))
+  ));
+  return profileImage?.id ?? cards.find(hasContentImage)?.id;
+}
+
+function localNarrativeRank(card: Card, heroId?: string): number {
+  if (card.id === heroId) return -10;
   const role = inferJournalRole(card);
-  if (role === 'hero' || role === 'media' || role === 'profile') return 0;
+  if (role === 'hero' || role === 'profile') return 0;
   if (role === 'project') return 10;
   if (role === 'link' && isPortfolioLink(card)) return 11;
+  if (role === 'media') return 12;
   if (role === 'skills') return 20;
   if (role === 'stat') return 21;
   if (role === 'body') return 22;
   if (role === 'timeline') return 30;
   if (role === 'note') return 40;
+  if (card.type === 'note' && role === 'todo') return 40;
   if (role === 'todo') return 41;
   if (role === 'link') return 42;
   return 50;
@@ -519,37 +544,44 @@ function localNarrativeRank(card: Card): number {
 
 function sortCardsForLocalLayout(cards: Card[]): Card[] {
   if (cards.some(hasLayoutIntent)) return sortCardsByIntent(cards);
+  const heroId = findLocalHeroId(cards);
   return [...cards].sort((a, b) => (
-    localNarrativeRank(a) - localNarrativeRank(b)
+    localNarrativeRank(a, heroId) - localNarrativeRank(b, heroId)
     || a.y - b.y
     || a.x - b.x
   ));
 }
 
-function isFullRowCard(card: Card): boolean {
+function isFullRowCard(card: Card, heroId?: string): boolean {
+  if (card.id === heroId) return true;
   const signal = journalLayoutSignal(card);
   return signal.preferredSpan >= 12
     || signal.role === 'hero'
-    || signal.role === 'media'
     || signal.role === 'timeline';
 }
 
 function isFeatureCard(card: Card): boolean {
   const signal = journalLayoutSignal(card);
-  return signal.role === 'project'
+  return signal.role === 'media'
+    || signal.role === 'project'
     || signal.role === 'profile'
     || signal.role === 'skills'
     || signal.preferredSpan >= 7
     || signal.weight >= 7.4;
 }
 
-function featureCompanionIndex(current: Card, cards: Card[]): number {
+function isSuitableFeaturePair(a: Card, b: Card): boolean {
+  return !isHeavyTodoCard(a) && !isHeavyTodoCard(b);
+}
+
+function featureCompanionIndex(current: Card, cards: Card[], heroId?: string): number {
   const currentWeight = journalLayoutSignal(current).weight;
   let bestIndex = -1;
   let bestDistance = Number.POSITIVE_INFINITY;
   cards.slice(0, 5).forEach((card, index) => {
-    if (isFullRowCard(card)) return;
+    if (isFullRowCard(card, heroId)) return;
     const distance = Math.abs(currentWeight - journalLayoutSignal(card).weight);
+    if (!isSuitableFeaturePair(current, card)) return;
     if (distance < bestDistance) {
       bestIndex = index;
       bestDistance = distance;
@@ -559,6 +591,7 @@ function featureCompanionIndex(current: Card, cards: Card[]): number {
 }
 
 function singleCardSpan(card: Card, mode: 'ai' | 'local'): number {
+  if (isHeavyTodoCard(card)) return 9;
   const preferred = journalLayoutSignal(card).preferredSpan;
   if (preferred >= 12) return 12;
   const max = mode === 'ai' ? 10 : 9;
@@ -646,10 +679,10 @@ function addLayoutRow(
   return row + 1;
 }
 
-function countLeadingSupportCards(cards: Card[]): number {
+function countLeadingSupportCards(cards: Card[], heroId?: string): number {
   let count = 0;
   for (const card of cards) {
-    if (isFullRowCard(card) || isFeatureCard(card)) break;
+    if (isFullRowCard(card, heroId) || isFeatureCard(card)) break;
     count++;
   }
   return count;
@@ -669,21 +702,133 @@ function localPatternForSupportCount(count: number): AIJournalLayoutPattern {
   return 'quartet';
 }
 
+function isSafeTrioCard(card: Card): boolean {
+  const signal = journalLayoutSignal(card);
+  return signal.preferredSpan <= 5 && signal.weight <= 6.5 && !hasContentImage(card);
+}
+
+function isSafeQuartetCard(card: Card): boolean {
+  const signal = journalLayoutSignal(card);
+  return signal.preferredSpan <= 4 && signal.weight <= 4.5 && !hasContentImage(card);
+}
+
+interface ConstrainedLayoutRow {
+  cards: Card[];
+  pattern: AIJournalLayoutPattern;
+}
+
+function constrainedGroupRows(
+  cards: Card[],
+  pattern: AIJournalLayoutPattern,
+  heroId?: string,
+): ConstrainedLayoutRow[] {
+  if (cards.length <= 1) {
+    return cards.map((card) => ({
+      cards: [card],
+      pattern: card.id === heroId ? 'hero' : 'single',
+    }));
+  }
+
+  const fullRows = cards.filter((card) => isFullRowCard(card, heroId));
+  if (fullRows.length) {
+    const rows: ConstrainedLayoutRow[] = [];
+    let pending: Card[] = [];
+    const flushPending = () => {
+      if (!pending.length) return;
+      rows.push(...constrainedGroupRows(
+        pending,
+        normalizePatternForCount(pattern, pending.length),
+        heroId,
+      ));
+      pending = [];
+    };
+    cards.forEach((card) => {
+      if (isFullRowCard(card, heroId)) {
+        flushPending();
+        rows.push({
+          cards: [card],
+          pattern: card.id === heroId ? 'hero' : 'single',
+        });
+      } else {
+        pending.push(card);
+      }
+    });
+    flushPending();
+    return rows;
+  }
+
+  if (cards.length === 2) {
+    if (!isSuitableFeaturePair(cards[0], cards[1])) {
+      return cards.map((card) => ({ cards: [card], pattern: 'single' }));
+    }
+    if (pattern === 'focus-left' || pattern === 'focus-right') {
+      return [{ cards, pattern }];
+    }
+    const left = journalLayoutSignal(cards[0]);
+    const right = journalLayoutSignal(cards[1]);
+    if (Math.abs(left.weight - right.weight) <= 1.4) {
+      return [{ cards, pattern: 'balanced' }];
+    }
+    return [{
+      cards,
+      pattern: left.weight > right.weight ? 'focus-left' : 'focus-right',
+    }];
+  }
+
+  if (cards.length === 3) {
+    if (cards.every(isSafeTrioCard)) return [{ cards, pattern: 'trio' }];
+    const featureIndex = cards
+      .map((card, index) => ({ index, weight: journalLayoutSignal(card).weight }))
+      .sort((a, b) => b.weight - a.weight || a.index - b.index)[0].index;
+    const feature = cards[featureIndex];
+    const supports = cards.filter((_, index) => index !== featureIndex);
+    return [
+      { cards: [feature], pattern: 'single' },
+      { cards: supports, pattern: 'balanced' },
+    ];
+  }
+
+  if (cards.length === 4) {
+    if (cards.every(isSafeQuartetCard)) return [{ cards, pattern: 'quartet' }];
+    const heavy = cards.filter((card) => !isSafeTrioCard(card));
+    if (heavy.length === 1) {
+      const supports = cards.filter((card) => card.id !== heavy[0].id);
+      if (supports.every(isSafeTrioCard)) {
+        return [
+          { cards: heavy, pattern: 'single' },
+          { cards: supports, pattern: 'trio' },
+        ];
+      }
+    }
+    return [
+      ...constrainedGroupRows(cards.slice(0, 2), 'balanced', heroId),
+      ...constrainedGroupRows(cards.slice(2), 'balanced', heroId),
+    ];
+  }
+
+  const rows: ConstrainedLayoutRow[] = [];
+  for (let index = 0; index < cards.length; index += 2) {
+    rows.push(...constrainedGroupRows(cards.slice(index, index + 2), 'balanced', heroId));
+  }
+  return rows;
+}
+
 function layoutCardsLocally(cards: Card[], startRow = 0): AutoJournalLayoutResult & { nextRow: number } {
   const layout = new Map<string, AutoJournalLayout>();
   const orderedCards: Card[] = [];
   const pending = sortCardsForLocalLayout(cards);
+  const heroId = findLocalHeroId(cards);
   let row = startRow;
 
   while (pending.length) {
     const current = pending.shift()!;
-    if (isFullRowCard(current)) {
+    if (isFullRowCard(current, heroId)) {
       row = addLayoutRow(layout, orderedCards, [current], 'hero', row, 'local', 'center');
       continue;
     }
 
     if (isFeatureCard(current)) {
-      const companionIndex = featureCompanionIndex(current, pending);
+      const companionIndex = featureCompanionIndex(current, pending, heroId);
       if (companionIndex >= 0) {
         const [companion] = pending.splice(companionIndex, 1);
         const pattern = journalLayoutSignal(current).weight >= journalLayoutSignal(companion).weight
@@ -698,22 +843,28 @@ function layoutCardsLocally(cards: Card[], startRow = 0): AutoJournalLayoutResul
 
     const hasNearbyFeaturePair = pending.some((card, index) => (
       index < 3
-      && !isFullRowCard(card)
+      && !isFullRowCard(card, heroId)
       && isFeatureCard(card)
       && pending[index + 1] !== undefined
-      && !isFullRowCard(pending[index + 1])
+      && !isFullRowCard(pending[index + 1], heroId)
       && isFeatureCard(pending[index + 1])
+      && isSuitableFeaturePair(card, pending[index + 1])
     ));
     const nearbyFeatureIndex = hasNearbyFeaturePair
       ? -1
-      : pending.findIndex((card, index) => index < 3 && !isFullRowCard(card) && isFeatureCard(card));
+      : pending.findIndex((card, index) => (
+        index < 3
+        && !isFullRowCard(card, heroId)
+        && isFeatureCard(card)
+        && isSuitableFeaturePair(current, card)
+      ));
     if (nearbyFeatureIndex >= 0) {
       const [feature] = pending.splice(nearbyFeatureIndex, 1);
       row = addLayoutRow(layout, orderedCards, [current, feature], 'focus-right', row, 'local', 'center');
       continue;
     }
 
-    const groupSize = localSupportGroupSize(1 + countLeadingSupportCards(pending));
+    const groupSize = localSupportGroupSize(1 + countLeadingSupportCards(pending, heroId));
     const rowCards = [current, ...pending.splice(0, groupSize - 1)];
     row = addLayoutRow(
       layout,
@@ -762,6 +913,7 @@ function layoutCardsWithAIPlan(
   const used = new Set<string>();
   const layout = new Map<string, AutoJournalLayout>();
   const orderedCards: Card[] = [];
+  const heroId = findLocalHeroId(cards);
   let row = 0;
 
   for (const group of plan.groups) {
@@ -778,15 +930,22 @@ function layoutCardsWithAIPlan(
     const capacity = patternCapacity(group.pattern);
     for (let index = 0; index < groupCards.length; index += capacity) {
       const chunk = groupCards.slice(index, index + capacity);
-      row = addLayoutRow(
-        layout,
-        orderedCards,
+      const constrainedRows = constrainedGroupRows(
         chunk,
         normalizePatternForCount(group.pattern, chunk.length),
-        row,
-        'ai',
-        group.align ?? 'center',
+        heroId,
       );
+      for (const constrained of constrainedRows) {
+        row = addLayoutRow(
+          layout,
+          orderedCards,
+          constrained.cards,
+          constrained.pattern,
+          row,
+          'ai',
+          group.align ?? 'center',
+        );
+      }
     }
   }
 

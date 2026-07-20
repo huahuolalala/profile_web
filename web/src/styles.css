@@ -2145,6 +2145,7 @@ body.journal-resize-active {
   box-shadow: 3px 4px 0 color-mix(in srgb, var(--card-accent) 10%, transparent);
   transform: rotate(var(--timeline-tilt));
 }
+.journal-timeline li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .timeline-pin {
   width: 11px;
   height: 11px;

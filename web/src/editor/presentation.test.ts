@@ -21,6 +21,7 @@ import {
   resizeJournalCard,
   snapJournalSpan,
   snapJournalLayout,
+  splitTimelineItem,
   timelineBlockIndex,
   type AIJournalLayoutPlan,
 } from './presentation';
@@ -40,6 +41,26 @@ function card(id: string, y: number, overrides: Partial<Card> = {}): Card {
   };
 }
 
+function expectValidLayout(cards: Card[]): void {
+  const visible = cards.filter((item) => item.visible);
+  expect(new Set(visible.map((item) => item.id)).size).toBe(visible.length);
+  for (const item of visible) {
+    const column = journalCardColumn(item);
+    const span = journalCardSpan(item);
+    expect(column).toBeGreaterThanOrEqual(1);
+    expect(span).toBeGreaterThanOrEqual(1);
+    expect(column + span - 1).toBeLessThanOrEqual(12);
+  }
+
+  const placements = buildJournalPlacements(cards);
+  for (const item of visible.filter((entry) => journalCardSpan(entry) === 12)) {
+    const placement = placements.get(item.id)!;
+    expect(
+      [...placements.entries()].filter(([, candidate]) => candidate.row === placement.row),
+    ).toHaveLength(1);
+  }
+}
+
 describe('journal presentation', () => {
   it('识别按年份书写的时间线列表并使用宽版', () => {
     const timeline = card('career', 0, {
@@ -48,6 +69,17 @@ describe('journal presentation', () => {
     });
     expect(timelineBlockIndex(timeline)).toBe(0);
     expect(journalCardSize(timeline, 3)).toBe('wide');
+  });
+
+  it('时间线保留完整年月日，也兼容年份区间', () => {
+    expect(splitTimelineItem('2026-08-18 · 抵达京都', 0)).toEqual({
+      date: '2026-08-18',
+      content: '抵达京都',
+    });
+    expect(splitTimelineItem('2021-2024 产品设计师', 1)).toEqual({
+      date: '2021-2024',
+      content: '产品设计师',
+    });
   });
 
   it('明确版面角色优先于智能推断，旧宽度继续使用自动模式', () => {
@@ -277,6 +309,184 @@ describe('journal presentation', () => {
       span: 4,
       h: 240,
     });
+  });
+
+  it('多张带图卡只把个人封面作为 hero，项目图片仍按项目语义排版', () => {
+    const arranged = autoLayoutJournalCards([
+      card('project-image', 0, {
+        title: '代表项目 · 城市漫游',
+        blocks: [
+          { type: 'image', src: 'data:image/png;base64,project' },
+          { type: 'text', text: '从研究到交付的完整案例。' },
+        ],
+      }),
+      card('portfolio', 100, {
+        type: 'link',
+        title: '作品入口',
+        blocks: [{ type: 'text', text: 'https://example.com' }],
+      }),
+      card('skills', 200, {
+        title: '能力地图',
+        blocks: [{ type: 'tags', items: ['研究', '策略', '交互', '视觉'] }],
+      }),
+      card('stat', 300, {
+        type: 'stat',
+        title: '项目经验',
+        blocks: [{ type: 'text', text: '8 年' }],
+      }),
+      card('cover', 400, {
+        title: '个人简介',
+        blocks: [{ type: 'image', src: 'data:image/png;base64,cover' }],
+      }),
+    ]);
+
+    expect(arranged[0].id).toBe('cover');
+    expect(arranged.map((item) => item.id).sort()).toEqual([
+      'cover',
+      'portfolio',
+      'project-image',
+      'skills',
+      'stat',
+    ]);
+    expect(arranged.find((item) => item.id === 'cover')).toMatchObject({ column: 1, span: 12 });
+    expect(arranged.find((item) => item.id === 'project-image')?.span).toBeLessThan(12);
+    expectValidLayout(arranged);
+  });
+
+  it('AI 把时间线塞进双栏时，前端仍让时间线独占满行', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('timeline', 0, {
+        title: '项目时间线',
+        blocks: [{ type: 'list', items: ['2024 研究', '2025 上线'] }],
+      }),
+      card('stat', 100, { type: 'stat' }),
+    ], {
+      groups: [{ cardIds: ['timeline', 'stat'], pattern: 'balanced' }],
+    });
+
+    expect(arranged.find((item) => item.id === 'timeline')).toMatchObject({ column: 1, span: 12 });
+    expect(buildJournalPlacements(arranged).get('stat')?.row).toBe(2);
+    expectValidLayout(arranged);
+  });
+
+  it('AI 把长项目和轻量卡塞进三栏时，前端拆成主卡与平衡双栏', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('project', 0, {
+        title: '代表项目',
+        blocks: [{ type: 'text', text: '项目说明'.repeat(90) }],
+      }),
+      card('stat', 100, { type: 'stat' }),
+      card('note', 200, { type: 'note' }),
+    ], {
+      groups: [{ cardIds: ['project', 'stat', 'note'], pattern: 'trio' }],
+    });
+
+    expect(buildJournalPlacements(arranged).get('project')?.row).toBe(1);
+    expect(buildJournalPlacements(arranged).get('stat')?.row).toBe(2);
+    expect(buildJournalPlacements(arranged).get('note')?.row).toBe(2);
+    expect(arranged.find((item) => item.id === 'project')?.span).toBeGreaterThanOrEqual(7);
+    expectValidLayout(arranged);
+  });
+
+  it('AI 把超长清单和轻便签组成双栏时，前端仍拆成独立行', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('todo', 0, {
+        type: 'todo',
+        title: '发布前检查',
+        blocks: [{
+          type: 'todo',
+          items: Array.from({ length: 9 }, (_, index) => ({ text: `事项 ${index + 1}`, done: false })),
+        }],
+      }),
+      card('status', 100, {
+        type: 'note',
+        title: '当前状态',
+        blocks: [{ type: 'text', text: '持续观察。' }],
+      }),
+    ], {
+      groups: [{ cardIds: ['todo', 'status'], pattern: 'balanced' }],
+    });
+    const placements = buildJournalPlacements(arranged);
+
+    expect(placements.get('todo')?.row).not.toBe(placements.get('status')?.row);
+    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(9);
+    expectValidLayout(arranged);
+  });
+
+  it('AI 四栏包含图片或长清单时自动降级，避免四张卡硬塞等宽', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('image', 0, {
+        title: '现场照片',
+        blocks: [{ type: 'image', src: 'data:image/png;base64,image' }],
+      }),
+      card('todo', 100, {
+        type: 'todo',
+        title: '发布清单',
+        blocks: [{
+          type: 'todo',
+          items: Array.from({ length: 8 }, (_, index) => ({ text: `事项 ${index + 1}`, done: false })),
+        }],
+      }),
+      card('stat', 200, { type: 'stat' }),
+      card('note', 300, { type: 'note' }),
+    ], {
+      groups: [{ cardIds: ['image', 'todo', 'stat', 'note'], pattern: 'quartet' }],
+    });
+
+    expect(new Set([...buildJournalPlacements(arranged).values()].map((item) => item.row)).size)
+      .toBeGreaterThan(1);
+    expect(arranged.map(journalCardSpan)).not.toEqual([3, 3, 3, 3]);
+    expectValidLayout(arranged);
+  });
+
+  it('无明确封面时只选择第一张图片作为 hero，其他图片保留内容卡宽度', () => {
+    const arranged = autoLayoutJournalCards([
+      card('photo-a', 0, {
+        title: '灵感照片',
+        blocks: [{ type: 'image', src: 'data:image/png;base64,a' }],
+      }),
+      card('photo-b', 100, {
+        title: '过程照片',
+        blocks: [{ type: 'image', src: 'data:image/png;base64,b' }],
+      }),
+      card('note', 200, { type: 'note' }),
+    ]);
+
+    expect(arranged.find((item) => item.id === 'photo-a')).toMatchObject({ column: 1, span: 12 });
+    expect(arranged.find((item) => item.id === 'photo-b')?.span).toBeLessThan(12);
+    expectValidLayout(arranged);
+  });
+
+  it('超长清单独占宽行，并让相邻状态便签和风险便签组成平衡行', () => {
+    const arranged = autoLayoutJournalCards([
+      card('note', 0, {
+        type: 'note',
+        title: '风险提醒',
+        blocks: [{ type: 'text', text: '保持范围清晰。' }],
+      }),
+      card('todo', 100, {
+        type: 'todo',
+        title: '发布前检查',
+        blocks: [{
+          type: 'todo',
+          items: Array.from({ length: 9 }, (_, index) => ({ text: `检查项 ${index + 1}`, done: false })),
+        }],
+      }),
+      card('status', 200, {
+        type: 'note',
+        title: '当前状态',
+        blocks: [
+          { type: 'text', text: '本周进入第二轮灰度。' },
+          { type: 'tags', items: ['灰度中', '持续观察', '可回滚'] },
+        ],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+
+    expect(placements.get('note')?.row).not.toBe(placements.get('todo')?.row);
+    expect(placements.get('note')?.row).toBe(placements.get('status')?.row);
+    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(9);
+    expectValidLayout(arranged);
   });
 
   it('本地策略按作品集叙事排序，并把项目与能力组成重点行', () => {

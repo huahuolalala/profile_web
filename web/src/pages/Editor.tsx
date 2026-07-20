@@ -30,7 +30,7 @@ import {
 } from '../editor/presentation';
 import { editorReducer, initEditor, loadLocal, saveLocal, uid, type EditorDoc } from '../editor/store';
 import { canRedo, canUndo } from '../editor/undostack';
-import type { Block, Card, CardTheme, CardType, Resume } from '../types';
+import type { Block, Card, CardTheme, CardType, JournalStyle, Resume } from '../types';
 
 const EMPTY: EditorDoc = { title: '', style: 'journal', cards: [], edges: [] };
 
@@ -268,12 +268,12 @@ export default function Editor() {
     layoutFeedbackTimerRef.current = window.setTimeout(() => setLayoutFeedback(null), 1800);
   };
 
-  const measureAutoLayout = (cards: Card[]): Card[] => {
+  const measureAutoLayout = (cards: Card[], style = doc.style): Card[] => {
     const grid = journalGridRef.current;
     if (!grid) return cards;
 
     const host = document.createElement('div');
-    host.className = `journal-measure-host style-${doc.style}`;
+    host.className = `journal-measure-host style-${style}`;
     host.style.width = `${grid.getBoundingClientRect().width}px`;
     const clone = grid.cloneNode(true) as HTMLDivElement;
     clone.classList.add('journal-measure-grid');
@@ -310,6 +310,18 @@ export default function Editor() {
     });
     host.remove();
     return fitJournalCardHeights(cards, measured);
+  };
+
+  const changeStyle = (style: JournalStyle) => {
+    if (style === docRef.current.style) return;
+    dispatch({
+      type: 'doc/replace',
+      doc: {
+        ...docRef.current,
+        style,
+        cards: measureAutoLayout(docRef.current.cards, style),
+      },
+    });
   };
 
   const runAutoLayout = async () => {
@@ -739,7 +751,7 @@ export default function Editor() {
         title={doc.title}
         style={doc.style}
         onTitle={(title) => dispatch({ type: 'title/set', title })}
-        onStyle={(style) => dispatch({ type: 'style/set', style })}
+        onStyle={changeStyle}
         saveState={saveState}
         canUndo={canUndo(state)}
         canRedo={canRedo(state)}
