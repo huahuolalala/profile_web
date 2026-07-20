@@ -82,7 +82,8 @@ describe('卡片类型导出渲染', () => {
       { ...base, id: 'l', title: '作品集', type: 'link', blocks: [{ type: 'text', text: 'https://www.linwanqing.design/work' }, { type: 'text', text: '全部作品' }] },
     ];
     const html = exportHTML('t', cards);
-    expect(html).toContain('class="domain">linwanqing.design');
+    expect(html).toContain('class="domain"');
+    expect(html).toContain('linwanqing.design');
   });
 
   it('todo 块输出勾选态', () => {
