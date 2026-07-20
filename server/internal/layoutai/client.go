@@ -29,24 +29,29 @@ pattern 及卡片数量：
 
 版式原则：
 1. 每个可见 cardId 必须且只能出现一次，不得创造、删除或修改 ID。
-2. 先建立叙事：身份或封面开场；项目与作品入口优先相邻，尽早形成可点击导览；能力与数据证明随后支撑；经历、当前可合作或合作方式承接；短观点负责轻量收束。
+2. 先建立叙事：身份或封面开场；项目与作品入口优先相邻，尽早形成可点击导览；能力与数据证明随后支撑；经历、短观点与当前状态承接；下一步、行动或公开入口负责明确收束。
 3. 一页最多一个 hero。只有明确的身份封面、页面封面或开场主视觉可用 hero；普通项目案例即使 HasImage=true 也不是封面，应按项目主内容处理。
 4. 项目、作品入口、长标准卡、长清单是主内容；数据、便签、短引言通常是辅内容。链接如果是作品集或项目入口，应贴近对应项目，不要被排到尾部孤立收束。
 5. 把语义互补的内容放在同一组，避免孤立小卡、无意义留白和尾部失衡。
+   连续多个项目时，为每个项目依次搭配一张邻近的轻辅助卡，优先选择对应链接、状态便签、能力或短观点，使用 focus-left 或 focus-right 建立稳定主辅列，不要把所有项目堆在一列、辅助卡随机散落在另一列。
+   统计卡与明确的复盘、总结或回顾正文应组成同一组，让数据成为复盘章节的引子，不要单独漂浮在页面中部。
 6. 时间线必须使用 single，不能进入 balanced、trio 或 quartet。
 7. trio 只用于三张 Summary 很短且都无图片的轻量卡；quartet 只用于四张 Summary 极短且都无图片的轻量卡。HasImage、长 Summary、长 todo/list 不得强塞三栏或四栏。
-8. todo 表示行动清单或协作步骤，不默认作为最后落点；优先和当前状态、合作方式、项目推进说明放在同一叙事段。
+   TextRunes 是卡片全部文字的字符总数，ItemCount 是 list/tags/todo 的总项数。TextRunes > 240 或 ItemCount > 8 视为重内容，不得进入 trio/quartet；两张重内容也不要组成窄双栏。
+8. todo 表示行动清单或协作步骤，不默认作为最后落点；优先和当前状态、合作方式、项目推进说明放在同一叙事段。标题明确为下一步、行动清单或后续计划的重型 todo 可以作为最终 single 组。
 9. quote 只作为短观点或注脚，不能因为 darkblue 等深色主题被提升为主视觉；深色 quote 仍按轻量卡处理。
-10. 最后一组必须形成视觉收束，不能留下单张轻量小卡孤岛。
+10. 最后一组必须形成视觉收束，不能留下单张轻量小卡孤岛。语义互补的 note 与 link 可以组成最后一组，作为“下一步 + 公开入口”的完整结尾。
 11. 不输出解释、Markdown、坐标、宽度或任何 groups 之外的字段。`
 
 type Card struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Type     string   `json:"type"`
-	Theme    string   `json:"theme"`
-	Summary  []string `json:"summary"`
-	HasImage bool     `json:"hasImage"`
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	Type      string   `json:"type"`
+	Theme     string   `json:"theme"`
+	Summary   []string `json:"summary"`
+	HasImage  bool     `json:"hasImage"`
+	TextRunes int      `json:"textRunes"`
+	ItemCount int      `json:"itemCount"`
 }
 
 type Request struct {
@@ -191,6 +196,7 @@ func ValidatePlan(cards []Card, plan Plan) error {
 		expected[card.ID] = struct{}{}
 	}
 	seen := make(map[string]struct{}, len(cards))
+	heroCount := 0
 	groupSize := map[string]int{
 		"hero": 1, "single": 1, "balanced": 2, "focus-left": 2,
 		"focus-right": 2, "trio": 3, "quartet": 4,
@@ -199,6 +205,12 @@ func ValidatePlan(cards []Card, plan Plan) error {
 		size, ok := groupSize[group.Pattern]
 		if !ok || len(group.CardIDs) != size {
 			return fmt.Errorf("invalid layout group %q", group.Pattern)
+		}
+		if group.Pattern == "hero" {
+			heroCount++
+			if heroCount > 1 {
+				return errors.New("layout plan has multiple heroes")
+			}
 		}
 		for _, id := range group.CardIDs {
 			if _, ok := expected[id]; !ok {

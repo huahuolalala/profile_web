@@ -2288,6 +2288,7 @@ body.journal-resize-active {
   border: 2px solid var(--card-accent);
   box-shadow: 6px 6px 0 color-mix(in srgb, var(--card-accent) 20%, transparent);
 }
+.journal-card-stat .journal-card-content { overflow: hidden; }
 .journal-stat-face {
   min-height: 144px;
   position: relative;
@@ -2348,6 +2349,14 @@ body.journal-resize-active {
 .journal-card-todo .journal-blocks { padding-left: 43px; }
 .journal-todos { display: grid; gap: 8px; list-style: none; }
 .journal-todos li { display: flex; align-items: flex-start; gap: 8px; color: var(--card-ink); font-size: 12px; line-height: 1.45; }
+.journal-card-todo.journal-card-wide .journal-blocks {
+  padding: 8px 20px 18px 43px;
+}
+.journal-card-todo.journal-card-wide .journal-todos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 7px;
+}
 .journal-todos li.done span { opacity: 0.48; text-decoration: line-through; }
 .journal-check {
   width: 18px;
@@ -2360,6 +2369,9 @@ body.journal-resize-active {
   border-radius: 4px;
 }
 .journal-todos li.done .journal-check { background: var(--card-accent); }
+@media (max-width: 680px) {
+  .journal-card-todo.journal-card-wide .journal-todos { grid-template-columns: 1fr; }
+}
 
 .journal-page-add {
   width: 100%;

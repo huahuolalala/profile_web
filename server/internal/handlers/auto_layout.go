@@ -45,10 +45,10 @@ func AIJournalLayout(d *sql.DB, planner layoutai.Planner) app.HandlerFunc {
 				c.JSON(http.StatusBadRequest, utils.H{"code": 400, "message": "单次最多为 60 张可见素材进行 AI 排版"})
 				return
 			}
-			summary, hasImage := summarizeBlocks(card.Blocks)
+			summary, hasImage, textRunes, itemCount := summarizeBlocks(card.Blocks)
 			input.Cards = append(input.Cards, layoutai.Card{
 				ID: card.ID, Title: card.Title, Type: card.Type, Theme: card.Theme,
-				Summary: summary, HasImage: hasImage,
+				Summary: summary, HasImage: hasImage, TextRunes: textRunes, ItemCount: itemCount,
 			})
 		}
 		if len(input.Cards) == 0 {
@@ -66,27 +66,34 @@ func AIJournalLayout(d *sql.DB, planner layoutai.Planner) app.HandlerFunc {
 	}
 }
 
-func summarizeBlocks(raw json.RawMessage) ([]string, bool) {
+func summarizeBlocks(raw json.RawMessage) ([]string, bool, int, int) {
 	var blocks []map[string]any
 	if json.Unmarshal(raw, &blocks) != nil {
-		return nil, false
+		return nil, false, 0, 0
 	}
 	summary := make([]string, 0, len(blocks))
 	hasImage := false
+	textRunes := 0
+	itemCount := 0
 	for _, block := range blocks {
 		switch block["type"] {
 		case "image":
 			hasImage = true
 		case "text":
 			if text, ok := block["text"].(string); ok && strings.TrimSpace(text) != "" {
-				summary = append(summary, truncateRunes(strings.TrimSpace(text), maxSummaryRunes))
+				value := strings.TrimSpace(text)
+				textRunes += utf8.RuneCountInString(value)
+				summary = append(summary, truncateRunes(value, maxSummaryRunes))
 			}
 		case "list", "tags":
 			if items, ok := block["items"].([]any); ok {
+				itemCount += len(items)
 				values := make([]string, 0, min(len(items), 8))
 				for _, item := range items {
 					if text, ok := item.(string); ok && strings.TrimSpace(text) != "" {
-						values = append(values, truncateRunes(strings.TrimSpace(text), 80))
+						value := strings.TrimSpace(text)
+						textRunes += utf8.RuneCountInString(value)
+						values = append(values, truncateRunes(value, 80))
 					}
 					if len(values) == 8 {
 						break
@@ -98,6 +105,7 @@ func summarizeBlocks(raw json.RawMessage) ([]string, bool) {
 			}
 		case "todo":
 			if items, ok := block["items"].([]any); ok {
+				itemCount += len(items)
 				values := make([]string, 0, min(len(items), 8))
 				for _, item := range items {
 					entry, ok := item.(map[string]any)
@@ -106,7 +114,9 @@ func summarizeBlocks(raw json.RawMessage) ([]string, bool) {
 					}
 					text, _ := entry["text"].(string)
 					if strings.TrimSpace(text) != "" {
-						values = append(values, truncateRunes(strings.TrimSpace(text), 80))
+						value := strings.TrimSpace(text)
+						textRunes += utf8.RuneCountInString(value)
+						values = append(values, truncateRunes(value, 80))
 					}
 					if len(values) == 8 {
 						break
@@ -118,7 +128,7 @@ func summarizeBlocks(raw json.RawMessage) ([]string, bool) {
 			}
 		}
 	}
-	return summary, hasImage
+	return summary, hasImage, textRunes, itemCount
 }
 
 func truncateRunes(value string, limit int) string {

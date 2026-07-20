@@ -160,17 +160,24 @@ describe('journal presentation', () => {
     expect(result.h! / journalLayoutPixelWidth('wide', 872)).toBeCloseTo(240 / 426, 2);
   });
 
-  it('一键排版生成自由栏位并恢复自动高度，同时保持内容与可见状态', () => {
+  it('一键排版生成自由栏位并恢复可见卡自动高度，同时保留隐藏素材的手动尺寸', () => {
     const cards = [
-      card('quote', 300, { type: 'quote', w: 180, h: 420, visible: false }),
+      card('quote', 300, {
+        type: 'quote',
+        w: 180,
+        h: 420,
+        column: 9,
+        span: 4,
+        align: 'end',
+        visible: false,
+      }),
       card('note', 100, { type: 'note', w: 560, h: 260 }),
     ];
     const arranged = autoLayoutJournalCards(cards);
     expect(arranged.map((item) => item.id)).toEqual(['note', 'quote']);
-    expect(arranged.map((item) => item.span)).toEqual([6, 5]);
-    expect(arranged.map((item) => item.column)).toEqual([4, 1]);
-    expect(arranged.every((item) => item.align === 'center')).toBe(true);
-    expect(arranged.every((item) => item.h === undefined)).toBe(true);
+    expect(arranged[0]).toMatchObject({ span: 6, column: 4, align: 'center' });
+    expect(arranged[0].h).toBeUndefined();
+    expect(arranged[1]).toMatchObject({ span: 4, column: 9, align: 'end', h: 420 });
     expect(arranged[1].visible).toBe(false);
     expect(arranged[0].blocks).toBe(cards[1].blocks);
   });
@@ -233,7 +240,7 @@ describe('journal presentation', () => {
     expect(buildJournalPlacements(arranged).get('quote')?.row).toBe(1);
   });
 
-  it('双栏会按内容主次选择留白或满栏，并让较重内容获得更大宽度', () => {
+  it('短内容双栏保持节奏，超长正文则独占宽行', () => {
     const balanced = autoLayoutJournalCards([
       card('note', 0, { type: 'note' }),
       card('quote', 100, { type: 'quote' }),
@@ -247,8 +254,10 @@ describe('journal presentation', () => {
         blocks: [{ type: 'text', text: '内容'.repeat(220) }],
       }),
     ]);
-    expect(asymmetric.map(journalCardSpan)).toEqual([4, 7]);
-    expect(asymmetric.map(journalCardColumn)).toEqual([1, 5]);
+    const placements = buildJournalPlacements(asymmetric);
+    expect(asymmetric[0].id).toBe('long');
+    expect(journalCardSpan(asymmetric[0])).toBeGreaterThanOrEqual(8);
+    expect(placements.get('long')?.row).not.toBe(placements.get('stat')?.row);
   });
 
   it('AI 版式计划只表达分组与模式，前端确定性映射到 12 栏', () => {
@@ -409,7 +418,7 @@ describe('journal presentation', () => {
     const placements = buildJournalPlacements(arranged);
 
     expect(placements.get('todo')?.row).not.toBe(placements.get('status')?.row);
-    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(9);
+    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(12);
     expectValidLayout(arranged);
   });
 
@@ -439,7 +448,7 @@ describe('journal presentation', () => {
     expectValidLayout(arranged);
   });
 
-  it('无明确封面时只选择第一张图片作为 hero，其他图片保留内容卡宽度', () => {
+  it('普通内容图片不会被本地策略误判为 hero', () => {
     const arranged = autoLayoutJournalCards([
       card('photo-a', 0, {
         title: '灵感照片',
@@ -452,8 +461,160 @@ describe('journal presentation', () => {
       card('note', 200, { type: 'note' }),
     ]);
 
-    expect(arranged.find((item) => item.id === 'photo-a')).toMatchObject({ column: 1, span: 12 });
+    expect(arranged.find((item) => item.id === 'photo-a')?.span).toBeLessThan(12);
     expect(arranged.find((item) => item.id === 'photo-b')?.span).toBeLessThan(12);
+    expect(arranged.filter((item) => journalCardSpan(item) === 12)).toHaveLength(0);
+    expectValidLayout(arranged);
+  });
+
+  it('多个超长项目不会互相挤进窄栏', () => {
+    const arranged = autoLayoutJournalCards(Array.from({ length: 3 }, (_, index) => card(
+      `project-${index + 1}`,
+      index * 100,
+      {
+        title: `项目案例 ${index + 1}`,
+        blocks: [{ type: 'text', text: `完整项目背景、判断、过程与结果 ${index + 1}。`.repeat(24) }],
+      },
+    )));
+    const placements = buildJournalPlacements(arranged);
+
+    expect(new Set([...placements.values()].map((item) => item.row))).toHaveLength(3);
+    expect(arranged.every((item) => journalCardSpan(item) >= 7)).toBe(true);
+    expectValidLayout(arranged);
+  });
+
+  it('中等长度引言不会与极短数据和便签硬塞三栏', () => {
+    const arranged = autoLayoutJournalCards([
+      card('quote', 0, {
+        type: 'quote',
+        title: '设计原则',
+        blocks: [{ type: 'text', text: '先理解真实问题，再删掉不必要的复杂度。'.repeat(8) }],
+      }),
+      card('stat', 100, {
+        type: 'stat',
+        title: '迭代轮次',
+        blocks: [{ type: 'text', text: '6 轮' }],
+      }),
+      card('note', 200, {
+        type: 'note',
+        title: '当前状态',
+        blocks: [{ type: 'text', text: '已上线' }],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+
+    expect(placements.get('quote')?.row).not.toBe(placements.get('stat')?.row);
+    expect(placements.get('stat')?.row).toBe(placements.get('note')?.row);
+    expectValidLayout(arranged);
+  });
+
+  it('无封面纯文字页面保留第一张实质内容作为开场，并让长正文独占宽行', () => {
+    const arranged = autoLayoutJournalCards([
+      card('intro', 0, {
+        title: '城市观察札记',
+        blocks: [{ type: 'text', text: '一份关于步行、街角小店与公共空间的持续记录。' }],
+      }),
+      card('essay', 100, {
+        title: '为什么要重新学习步行',
+        blocks: [{ type: 'text', text: '长篇观察正文。'.repeat(70) }],
+      }),
+      card('stat', 200, {
+        type: 'stat',
+        title: '累计步行',
+        blocks: [{ type: 'text', text: '186 km' }],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+
+    expect(arranged[0].id).toBe('intro');
+    expect(placements.get('essay')?.row).not.toBe(placements.get('intro')?.row);
+    expect(placements.get('essay')?.row).not.toBe(placements.get('stat')?.row);
+    expect(journalCardSpan(arranged.find((item) => item.id === 'essay')!)).toBeGreaterThanOrEqual(8);
+    expectValidLayout(arranged);
+  });
+
+  it('三个重点项目搭配两张轻卡时，把重点项目留作收束而不是留下轻卡孤岛', () => {
+    const arranged = autoLayoutJournalCards([
+      ...Array.from({ length: 3 }, (_, index) => card(`project-${index + 1}`, index * 100, {
+        title: `项目案例 ${index + 1}`,
+        blocks: [{ type: 'text', text: '研究、定义、原型与交付。'.repeat(12) }],
+      })),
+      card('status', 300, {
+        type: 'note',
+        title: '当前状态',
+        blocks: [{ type: 'text', text: '持续迭代中' }],
+      }),
+      card('quote', 400, {
+        type: 'quote',
+        title: '设计原则',
+        blocks: [{ type: 'text', text: '让复杂变得清楚。' }],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+    const cardsByRow = new Map<number, string[]>();
+    for (const [id, placement] of placements) {
+      cardsByRow.set(placement.row, [...(cardsByRow.get(placement.row) ?? []), id]);
+    }
+    const singletonRows = [...cardsByRow.values()].filter((ids) => ids.length === 1);
+
+    expect(singletonRows).toHaveLength(1);
+    expect(singletonRows[0][0]).toMatch(/^project-/);
+    expectValidLayout(arranged);
+  });
+
+  it.each([5, 7, 11])('%i 张轻量素材不会产生单张尾行', (count) => {
+    const arranged = autoLayoutJournalCards(Array.from({ length: count }, (_, index) => card(
+      `light-${index + 1}`,
+      index * 100,
+      {
+        type: index % 3 === 0 ? 'stat' : index % 3 === 1 ? 'note' : 'quote',
+        blocks: [{ type: 'text', text: `轻量内容 ${index + 1}` }],
+      },
+    )));
+    const rowCounts = new Map<number, number>();
+    for (const placement of buildJournalPlacements(arranged).values()) {
+      rowCounts.set(placement.row, (rowCounts.get(placement.row) ?? 0) + 1);
+    }
+
+    expect([...rowCounts.values()].every((rowCount) => rowCount >= 2)).toBe(true);
+    expectValidLayout(arranged);
+  });
+
+  it('错误 AI 计划包含多个 hero 时只保留一个全宽开场', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('intro', 0, {
+        title: '项目集开场',
+        blocks: [{ type: 'text', text: '年度作品精选' }],
+      }),
+      card('project', 100, {
+        title: '项目案例',
+        blocks: [{ type: 'text', text: '项目背景与设计过程。'.repeat(12) }],
+      }),
+    ], {
+      groups: [
+        { cardIds: ['intro'], pattern: 'hero' },
+        { cardIds: ['project'], pattern: 'hero' },
+      ],
+    });
+
+    expect(arranged.filter((item) => journalCardSpan(item) === 12)).toHaveLength(1);
+    expect(arranged.find((item) => item.id === 'project')?.span).toBeLessThan(12);
+    expectValidLayout(arranged);
+  });
+
+  it('错误 AI 对齐值会回退为居中，不污染卡片数据', () => {
+    const arranged = applyAIJournalLayoutPlan([
+      card('stat', 0, { type: 'stat' }),
+      card('note', 100, { type: 'note' }),
+    ], {
+      groups: [{
+        cardIds: ['stat', 'note'],
+        pattern: 'balanced',
+        align: 'baseline' as never,
+      }],
+    });
+
+    expect(arranged.map(journalCardAlign)).toEqual(['center', 'center']);
     expectValidLayout(arranged);
   });
 
@@ -485,7 +646,168 @@ describe('journal presentation', () => {
 
     expect(placements.get('note')?.row).not.toBe(placements.get('todo')?.row);
     expect(placements.get('note')?.row).toBe(placements.get('status')?.row);
-    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(9);
+    expect(journalCardSpan(arranged.find((item) => item.id === 'todo')!)).toBe(12);
+    expectValidLayout(arranged);
+  });
+
+  it('连续项目形成稳定主辅列，并用数据复盘与行动清单完成收束', () => {
+    const arranged = autoLayoutJournalCards([
+      card('project-a', 0, {
+        title: '项目案例 · Atlas 研究平台',
+        blocks: [{ type: 'text', text: '完整项目背景、判断、过程与结果。'.repeat(26) }],
+      }),
+      card('link', 100, {
+        type: 'link',
+        title: '完整案例集',
+        blocks: [
+          { type: 'text', text: 'https://example.com/studio-2026' },
+          { type: 'text', text: '阅读三个项目的完整记录。' },
+        ],
+      }),
+      card('project-b', 200, {
+        title: '项目案例 · Field Notes',
+        blocks: [{ type: 'text', text: '完整项目背景、判断、过程与结果。'.repeat(24) }],
+      }),
+      card('status', 300, {
+        type: 'note',
+        title: '工作室状态',
+        blocks: [
+          { type: 'text', text: '两项上线，一项内测。' },
+          { type: 'tags', items: ['已上线', '内测中', '持续迭代'] },
+        ],
+      }),
+      card('project-c', 400, {
+        title: '项目案例 · Relay 发布系统',
+        blocks: [{ type: 'text', text: '完整项目背景、判断、过程与结果。'.repeat(25) }],
+      }),
+      card('quote', 500, {
+        type: 'quote',
+        title: '年度原则',
+        blocks: [
+          { type: 'text', text: '用清楚的结构减少协作损耗。' },
+          { type: 'text', text: 'YumMe Studio' },
+        ],
+      }),
+      card('stat', 600, {
+        type: 'stat',
+        title: '年度访谈',
+        blocks: [
+          { type: 'text', text: '47 人' },
+          { type: 'text', text: '覆盖研究、编辑、运营与独立创作者。' },
+        ],
+      }),
+      card('recap', 700, {
+        title: '复盘 · 我们改变了什么',
+        blocks: [{ type: 'text', text: '把产品判断、设计方案和工程约束放进同一张可讨论的地图。'.repeat(18) }],
+      }),
+      card('todo', 800, {
+        type: 'todo',
+        title: '下一年度行动清单',
+        blocks: [{
+          type: 'todo',
+          items: Array.from({ length: 8 }, (_, index) => ({
+            text: `行动事项 ${index + 1}`,
+            done: index < 2,
+          })),
+        }],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+
+    expect(arranged.map((item) => item.id)).toEqual([
+      'project-a',
+      'link',
+      'project-b',
+      'status',
+      'project-c',
+      'quote',
+      'stat',
+      'recap',
+      'todo',
+    ]);
+    for (const [projectId, supportId] of [
+      ['project-a', 'link'],
+      ['project-b', 'status'],
+      ['project-c', 'quote'],
+    ]) {
+      expect(placements.get(projectId)?.row).toBe(placements.get(supportId)?.row);
+      expect(arranged.find((item) => item.id === projectId)).toMatchObject({
+        column: 1,
+        span: 7,
+        align: 'start',
+      });
+      expect(arranged.find((item) => item.id === supportId)).toMatchObject({
+        column: 8,
+        span: 5,
+        align: 'start',
+      });
+    }
+    expect(placements.get('stat')?.row).toBe(placements.get('recap')?.row);
+    expect(arranged.find((item) => item.id === 'stat')).toMatchObject({
+      column: 1,
+      span: 4,
+      align: 'start',
+    });
+    expect(arranged.find((item) => item.id === 'recap')).toMatchObject({
+      column: 5,
+      span: 8,
+      align: 'start',
+    });
+    expect(arranged.find((item) => item.id === 'todo')).toMatchObject({
+      column: 1,
+      span: 12,
+    });
+    expectValidLayout(arranged);
+  });
+
+  it('无图长文用便签和链接组成底部对齐的完整收束带', () => {
+    const arranged = autoLayoutJournalCards([
+      card('intro', 0, {
+        title: '城市观察札记',
+        blocks: [{ type: 'text', text: '一份关于步行、街角小店与公共空间的持续记录。' }],
+      }),
+      card('essay', 100, {
+        title: '为什么要重新学习步行',
+        blocks: [{ type: 'text', text: '长篇观察正文。'.repeat(70) }],
+      }),
+      card('timeline', 200, {
+        title: '记录时间线',
+        blocks: [{ type: 'list', items: ['2026-03 建立观察表', '2026-04 完成连续记录'] }],
+      }),
+      card('quote', 300, {
+        type: 'quote',
+        title: '观察原则',
+        blocks: [{ type: 'text', text: '先看人们如何使用空间，再讨论空间应该成为什么。'.repeat(5) }],
+      }),
+      card('note', 400, {
+        type: 'note',
+        title: '下一步',
+        blocks: [{ type: 'text', text: '把观察方法整理成一套轻量工具。' }],
+      }),
+      card('link', 500, {
+        type: 'link',
+        title: '公开笔记',
+        blocks: [
+          { type: 'text', text: 'https://example.com/city-notes' },
+          { type: 'text', text: '查看完整路线、观察表与每周更新。' },
+        ],
+      }),
+    ]);
+    const placements = buildJournalPlacements(arranged);
+    const finalRow = Math.max(...[...placements.values()].map((item) => item.row));
+
+    expect(placements.get('note')?.row).toBe(finalRow);
+    expect(placements.get('link')?.row).toBe(finalRow);
+    expect(arranged.find((item) => item.id === 'note')).toMatchObject({
+      column: 1,
+      span: 5,
+      align: 'end',
+    });
+    expect(arranged.find((item) => item.id === 'link')).toMatchObject({
+      column: 6,
+      span: 7,
+      align: 'end',
+    });
     expectValidLayout(arranged);
   });
 
@@ -503,7 +825,7 @@ describe('journal presentation', () => {
       card('quote', 300, { type: 'quote' }),
     ]);
 
-    expect(arranged.map((item) => item.id)).toEqual(['project', 'skills', 'status', 'quote']);
+    expect(arranged.map((item) => item.id)).toEqual(['project', 'skills', 'quote', 'status']);
     expect(arranged.map(journalCardSpan)).toEqual([7, 5, 5, 5]);
     expect(arranged.map(journalCardColumn)).toEqual([1, 8, 2, 7]);
   });
@@ -547,9 +869,9 @@ describe('journal presentation', () => {
       'portfolio',
       'stat',
       'timeline',
+      'quote',
       'status',
       'todo',
-      'quote',
     ]);
     expect(arranged.find((item) => item.id === 'project')).toMatchObject({ column: 1, span: 7 });
     expect(arranged.find((item) => item.id === 'skills')).toMatchObject({ column: 8, span: 5 });

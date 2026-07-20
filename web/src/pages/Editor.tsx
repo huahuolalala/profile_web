@@ -278,11 +278,21 @@ export default function Editor() {
     const clone = grid.cloneNode(true) as HTMLDivElement;
     clone.classList.add('journal-measure-grid');
     clone.querySelectorAll(
-      '.journal-card-toolbar, .journal-resize-handle, .journal-resize-readout, .journal-card-placeholder',
+      '.journal-card-toolbar, .journal-resize-handle, .journal-resize-readout, .journal-card-placeholder, .journal-page-add',
     ).forEach((element) => element.remove());
 
     const cardsById = new Map(cards.map((card) => [card.id, card]));
     const placements = buildJournalPlacements(cards);
+    const elementsById = new Map(
+      Array.from(clone.querySelectorAll<HTMLElement>('[data-card-id]'))
+        .map((element) => [element.dataset.cardId ?? '', element] as const),
+    );
+    cards.filter((card) => card.visible).forEach((card, index) => {
+      const element = elementsById.get(card.id);
+      if (!element) return;
+      element.classList.toggle('journal-card-first', index === 0);
+      clone.appendChild(element);
+    });
     clone.querySelectorAll<HTMLElement>('[data-card-id]').forEach((element) => {
       const card = cardsById.get(element.dataset.cardId ?? '');
       const placement = placements.get(element.dataset.cardId ?? '');

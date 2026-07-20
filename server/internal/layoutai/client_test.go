@@ -57,6 +57,17 @@ func TestValidatePlanRejectsUnknownDuplicateAndMissingCards(t *testing.T) {
 	}
 }
 
+func TestValidatePlanRejectsMultipleHeroes(t *testing.T) {
+	cards := []Card{{ID: "intro"}, {ID: "project"}}
+	plan := Plan{Groups: []Group{
+		{CardIDs: []string{"intro"}, Pattern: "hero"},
+		{CardIDs: []string{"project"}, Pattern: "hero"},
+	}}
+	if err := ValidatePlan(cards, plan); err == nil {
+		t.Fatal("expected multiple heroes to be rejected")
+	}
+}
+
 func TestClientDoesNotRequireEmbeddedImageData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
@@ -88,7 +99,12 @@ func TestSystemPromptPrioritizesPortfolioNarrative(t *testing.T) {
 		"普通项目案例即使 HasImage=true 也不是封面",
 		"时间线必须使用 single",
 		"Summary 很短且都无图片",
-		"todo 表示行动清单或协作步骤，不默认作为最后落点",
+		"TextRunes",
+		"ItemCount",
+		"连续多个项目",
+		"统计卡与明确的复盘",
+		"note 与 link",
+		"下一步、行动清单",
 		"quote 只作为短观点或注脚，不能因为 darkblue 等深色主题被提升为主视觉",
 	} {
 		if !strings.Contains(systemPrompt, want) {

@@ -236,7 +236,9 @@ export default function CardView(props: Props) {
     <motion.article
       layout="position"
       transition={reduceMotion ? { duration: 0 } : { layout: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
-      className={cardClassName(card, props.index, props.selected)}
+      className={`${cardClassName(card, props.index, props.selected)} ${
+        props.placement.span >= 8 ? 'journal-card-wide' : ''
+      }`.trim()}
       style={{
         '--note-angle': noteAngle(card.id),
         '--journal-column': props.placement.column,

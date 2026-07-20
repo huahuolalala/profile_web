@@ -71,6 +71,12 @@ func TestAIJournalLayoutSummarizesCardsWithoutImageData(t *testing.T) {
 	if len(planner.input.Cards) != 3 || !planner.input.Cards[0].HasImage {
 		t.Fatalf("unexpected cards: %+v", planner.input.Cards)
 	}
+	if planner.input.Cards[0].TextRunes != 4 || planner.input.Cards[1].TextRunes != 3 {
+		t.Fatalf("unexpected text metrics: %+v", planner.input.Cards)
+	}
+	if planner.input.Cards[2].ItemCount != 2 || planner.input.Cards[2].TextRunes != 4 {
+		t.Fatalf("unexpected item metrics: %+v", planner.input.Cards[2])
+	}
 	encoded, _ := json.Marshal(planner.input)
 	if string(encoded) == "" || strings.Contains(string(encoded), "base64") || strings.Contains(string(encoded), "SECRET") {
 		t.Fatalf("image data leaked to planner: %s", encoded)
