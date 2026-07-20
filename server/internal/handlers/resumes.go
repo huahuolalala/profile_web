@@ -20,6 +20,10 @@ type cardPayload struct {
 	X       float64         `json:"x"`
 	Y       float64         `json:"y"`
 	W       float64         `json:"w"`
+	H       *float64        `json:"h,omitempty"`
+	Column  *int            `json:"column,omitempty"`
+	Span    *int            `json:"span,omitempty"`
+	Align   string          `json:"align,omitempty"`
 	Visible bool            `json:"visible"`
 	Blocks  json.RawMessage `json:"blocks"`
 }
@@ -32,6 +36,7 @@ type edgePayload struct {
 
 type saveRequest struct {
 	Title string        `json:"title"`
+	Style string        `json:"style"`
 	Cards []cardPayload `json:"cards"`
 	Edges []edgePayload `json:"edges"`
 }
@@ -45,9 +50,17 @@ type resumeSummary struct {
 type resumeJSON struct {
 	ID        int64         `json:"id"`
 	Title     string        `json:"title"`
+	Style     string        `json:"style"`
 	UpdatedAt string        `json:"updatedAt"`
 	Cards     []cardPayload `json:"cards"`
 	Edges     []edgePayload `json:"edges"`
+}
+
+func normalizeJournalStyle(style string) string {
+	if style == "minimal" {
+		return "minimal"
+	}
+	return "journal"
 }
 
 func userID(c *app.RequestContext) int64 {
@@ -110,12 +123,12 @@ func GetResume(d *sql.DB) app.HandlerFunc {
 			c.JSON(http.StatusNotFound, utils.H{"code": 404, "message": "简历不存在"})
 			return
 		}
-		var title, updatedAt string
-		if err := d.QueryRowContext(ctx, "SELECT title, updated_at FROM resumes WHERE id=?", id).Scan(&title, &updatedAt); err != nil {
+		var title, style, updatedAt string
+		if err := d.QueryRowContext(ctx, "SELECT title, journal_style, updated_at FROM resumes WHERE id=?", id).Scan(&title, &style, &updatedAt); err != nil {
 			fail500(c)
 			return
 		}
-		rows, err := d.QueryContext(ctx, "SELECT id, title, card_type, theme, x, y, w, visible, content FROM cards WHERE resume_id=? ORDER BY sort_order", id)
+		rows, err := d.QueryContext(ctx, "SELECT id, title, card_type, theme, x, y, w, h, grid_column, grid_span, vertical_align, visible, content FROM cards WHERE resume_id=? ORDER BY sort_order", id)
 		if err != nil {
 			fail500(c)
 			return
@@ -125,12 +138,30 @@ func GetResume(d *sql.DB) app.HandlerFunc {
 			var cd cardPayload
 			var vis int
 			var content string
-			if err := rows.Scan(&cd.ID, &cd.Title, &cd.Type, &cd.Theme, &cd.X, &cd.Y, &cd.W, &vis, &content); err != nil {
+			var align sql.NullString
+			if err := rows.Scan(
+				&cd.ID,
+				&cd.Title,
+				&cd.Type,
+				&cd.Theme,
+				&cd.X,
+				&cd.Y,
+				&cd.W,
+				&cd.H,
+				&cd.Column,
+				&cd.Span,
+				&align,
+				&vis,
+				&content,
+			); err != nil {
 				rows.Close()
 				fail500(c)
 				return
 			}
 			cd.Visible = vis == 1
+			if align.Valid {
+				cd.Align = align.String
+			}
 			if cd.Type == "" {
 				cd.Type = "standard"
 			}
@@ -157,7 +188,9 @@ func GetResume(d *sql.DB) app.HandlerFunc {
 			edges = append(edges, e)
 		}
 		erows.Close()
-		c.JSON(http.StatusOK, utils.H{"resume": resumeJSON{ID: id, Title: title, UpdatedAt: updatedAt, Cards: cards, Edges: edges}})
+		c.JSON(http.StatusOK, utils.H{"resume": resumeJSON{
+			ID: id, Title: title, Style: normalizeJournalStyle(style), UpdatedAt: updatedAt, Cards: cards, Edges: edges,
+		}})
 	}
 }
 
@@ -196,7 +229,9 @@ func SaveResume(d *sql.DB) app.HandlerFunc {
 			return
 		}
 		defer tx.Rollback()
-		if _, err := tx.ExecContext(ctx, "UPDATE resumes SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", req.Title, id); err != nil {
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE resumes SET title=?, journal_style=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+			req.Title, normalizeJournalStyle(req.Style), id); err != nil {
 			fail500(c)
 			return
 		}
@@ -218,8 +253,8 @@ func SaveResume(d *sql.DB) app.HandlerFunc {
 				cardType = "standard"
 			}
 			if _, err := tx.ExecContext(ctx,
-				"INSERT INTO cards (id, resume_id, title, card_type, theme, x, y, w, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-				cd.ID, id, cd.Title, cardType, cd.Theme, cd.X, cd.Y, cd.W, sortOf[cd.ID], vis, string(cd.Blocks)); err != nil {
+				"INSERT INTO cards (id, resume_id, title, card_type, theme, x, y, w, h, grid_column, grid_span, vertical_align, sort_order, visible, content) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+				cd.ID, id, cd.Title, cardType, cd.Theme, cd.X, cd.Y, cd.W, cd.H, cd.Column, cd.Span, cd.Align, sortOf[cd.ID], vis, string(cd.Blocks)); err != nil {
 				fail500(c)
 				return
 			}

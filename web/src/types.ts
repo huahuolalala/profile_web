@@ -1,7 +1,9 @@
 export type CardTheme = 'white' | 'yellow' | 'purple' | 'teal' | 'pink' | 'blue' | 'darkblue';
+export type JournalStyle = 'journal' | 'minimal';
 
 /** 卡片类型：决定整张卡片的渲染方式 */
 export type CardType = 'standard' | 'note' | 'quote' | 'link' | 'stat' | 'todo';
+export type CardVerticalAlign = 'start' | 'center' | 'end';
 
 export const CARD_TYPES: CardType[] = ['standard', 'note', 'quote', 'link', 'stat', 'todo'];
 
@@ -34,6 +36,10 @@ export interface Card {
   x: number;
   y: number;
   w: number;
+  h?: number;
+  column?: number;
+  span?: number;
+  align?: CardVerticalAlign;
   visible: boolean;
   blocks: Block[];
 }
@@ -53,6 +59,7 @@ export interface ResumeSummary {
 export interface Resume {
   id: number;
   title: string;
+  style: JournalStyle;
   updatedAt: string;
   cards: Card[];
   edges: Edge[];

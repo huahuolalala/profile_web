@@ -1,1 +1,10 @@
 .playwright-cli/
+.codegraph/
+.cursor/
+/output/
+/tmp/
+web/output/
+.env
+.env.*
+server/.env
+server/.env.*

@@ -19,7 +19,7 @@ export default function Register() {
         body: { username, password },
       });
       setToken(token);
-      // 新用户直接进入「我的画布」，第一时间看到赠送的 YumMe Example
+      // 新用户直接进入「我的手账」，第一时间看到赠送的 YumMe Example
       nav('/mind');
     } catch (e) {
       setError((e as Error).message);
@@ -32,7 +32,7 @@ export default function Register() {
       <form className="auth-card" onSubmit={(e) => { e.preventDefault(); if (!busy) void submit(); }}>
         <div className="brand-mark-img"><img src="/logo-192.png" alt="YumMe" /></div>
         <h1>加入 YumMe</h1>
-        <p className="auth-sub">注册即送 YumMe Example 样例画布，照着改就是你的</p>
+        <p className="auth-sub">注册即送 YumMe Example 样例手账，照着改就是你的</p>
         <label className="field">
           <span className="field-label">用户名</span>
           <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="请输入用户名" autoFocus />

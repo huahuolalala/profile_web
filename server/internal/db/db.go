@@ -37,6 +37,7 @@ func Migrate(d *sql.DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL REFERENCES users(id),
 			title TEXT NOT NULL,
+			journal_style TEXT NOT NULL DEFAULT 'journal',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
@@ -46,7 +47,8 @@ func Migrate(d *sql.DB) error {
 			title TEXT NOT NULL,
 			card_type TEXT NOT NULL DEFAULT 'standard',
 			theme TEXT NOT NULL,
-			x REAL, y REAL, w REAL,
+			x REAL, y REAL, w REAL, h REAL,
+			grid_column INTEGER, grid_span INTEGER, vertical_align TEXT,
 			sort_order INTEGER,
 			visible INTEGER,
 			content TEXT
@@ -64,5 +66,10 @@ func Migrate(d *sql.DB) error {
 	}
 	// 旧库迁移：补 card_type 列（已存在时忽略错误）
 	d.Exec("ALTER TABLE cards ADD COLUMN card_type TEXT NOT NULL DEFAULT 'standard'")
+	d.Exec("ALTER TABLE cards ADD COLUMN h REAL")
+	d.Exec("ALTER TABLE cards ADD COLUMN grid_column INTEGER")
+	d.Exec("ALTER TABLE cards ADD COLUMN grid_span INTEGER")
+	d.Exec("ALTER TABLE cards ADD COLUMN vertical_align TEXT")
+	d.Exec("ALTER TABLE resumes ADD COLUMN journal_style TEXT NOT NULL DEFAULT 'journal'")
 	return nil
 }

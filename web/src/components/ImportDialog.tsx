@@ -15,7 +15,7 @@ export default function ImportDialog({ onClose, onImport }: Props) {
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>导入代码</h3>
-        <p className="modal-tip">粘贴 AI 按 AGENTS.md 中 DSL 规范生成的 JSON 代码，校验通过后渲染为画布卡片。</p>
+        <p className="modal-tip">粘贴 AI 按 AGENTS.md 中 DSL 规范生成的 JSON，校验通过后铺成手账素材。</p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -24,8 +24,8 @@ export default function ImportDialog({ onClose, onImport }: Props) {
           autoFocus
         />
         <div className="modal-mode">
-          <label><input type="radio" checked={mode === 'append'} onChange={() => setMode('append')} /> 追加到当前画布</label>
-          <label><input type="radio" checked={mode === 'overwrite'} onChange={() => setMode('overwrite')} /> 覆盖全部卡片</label>
+          <label><input type="radio" checked={mode === 'append'} onChange={() => setMode('append')} /> 追加到当前手账</label>
+          <label><input type="radio" checked={mode === 'overwrite'} onChange={() => setMode('overwrite')} /> 覆盖全部素材</label>
         </div>
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">

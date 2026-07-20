@@ -1,8 +1,9 @@
-import type { Card, Edge } from '../types';
+import type { Card, Edge, JournalStyle } from '../types';
 import { initHistory, push, redo as hRedo, undo as hUndo, type History } from './undostack';
 
 export interface EditorDoc {
   title: string;
+  style: JournalStyle;
   cards: Card[];
   edges: Edge[];
 }
@@ -11,6 +12,7 @@ export type DocAction =
   | { type: 'doc/load'; doc: EditorDoc }
   | { type: 'doc/replace'; doc: EditorDoc }
   | { type: 'title/set'; title: string }
+  | { type: 'style/set'; style: JournalStyle }
   | { type: 'card/move'; id: string; x: number; y: number }
   | { type: 'cards/moveMany'; moves: { id: string; x: number; y: number }[] }
   | { type: 'card/update'; card: Card }
@@ -27,6 +29,8 @@ export function docReducer(doc: EditorDoc, a: DocAction): EditorDoc {
       return a.doc;
     case 'title/set':
       return { ...doc, title: a.title };
+    case 'style/set':
+      return { ...doc, style: a.style };
     case 'card/move':
       return { ...doc, cards: doc.cards.map((c) => (c.id === a.id ? { ...c, x: a.x, y: a.y } : c)) };
     case 'cards/moveMany': {
@@ -85,7 +89,15 @@ export interface LocalCache {
 export function loadLocal(id: string): LocalCache | null {
   try {
     const s = localStorage.getItem(PREFIX + id);
-    return s ? (JSON.parse(s) as LocalCache) : null;
+    if (!s) return null;
+    const cache = JSON.parse(s) as LocalCache;
+    return {
+      ...cache,
+      doc: {
+        ...cache.doc,
+        style: cache.doc.style === 'minimal' ? 'minimal' : 'journal',
+      },
+    };
   } catch {
     return null;
   }

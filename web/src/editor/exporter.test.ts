@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { journalLayoutWidth } from './presentation';
 import { exportHTML, sortForExport } from './exporter';
 import type { Card } from '../types';
 
@@ -39,10 +40,26 @@ describe('exportHTML', () => {
     expect(html).toContain('<li>5 年经验</li>');
     expect(html).toContain('class="tag"');
     expect(html).toContain('data:image/png;base64,AAA');
-    expect(html).toContain('#7c5cbf'); // purple 强调色
+    expect(html).toContain('#8b5cf6'); // purple 强调色
   });
   it('标题与文件名语义', () => {
     expect(html).toContain('<title>我的简历</title>');
+  });
+  it('默认使用手账风且不向用户内容植入产品品牌', () => {
+    expect(html).toContain('<body class="style-journal">');
+    expect(html).not.toContain('YumMe Journal');
+    expect(html).not.toContain('class="brand"');
+  });
+  it('纯白风使用独立根样式且保留卡片类型结构', () => {
+    const out = exportHTML('t', cards, 'minimal');
+    expect(out).toContain('<body class="style-minimal">');
+    expect(out).toContain('body.style-minimal .card.quote');
+    expect(out).toContain('body.style-minimal .card.stat');
+  });
+  it('导出遵循明确版面角色且不使用会打乱顺序的 dense 排版', () => {
+    const out = exportHTML('t', [{ ...cards[0], w: journalLayoutWidth('compact') }]);
+    expect(out).toContain('size-compact');
+    expect(out).not.toContain('grid-auto-flow:dense');
   });
   it('img src 转义双引号，防属性注入', () => {
     const evil: Card[] = [

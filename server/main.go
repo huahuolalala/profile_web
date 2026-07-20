@@ -14,6 +14,7 @@ import (
 	"profile_web/server/internal/auth"
 	"profile_web/server/internal/db"
 	"profile_web/server/internal/handlers"
+	"profile_web/server/internal/layoutai"
 )
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
 	api.POST("/resumes", handlers.CreateResume(d))
 	api.GET("/resumes/:id", handlers.GetResume(d))
 	api.PUT("/resumes/:id", handlers.SaveResume(d))
+	api.POST("/resumes/:id/auto-layout", handlers.AIJournalLayout(d, layoutai.NewFromEnv()))
 	api.PATCH("/resumes/:id", handlers.RenameResume(d))
 	api.DELETE("/resumes/:id", handlers.DeleteResume(d))
 

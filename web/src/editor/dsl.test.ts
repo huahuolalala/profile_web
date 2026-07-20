@@ -59,6 +59,12 @@ describe('parseDSL', () => {
     const r = parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"x":"7"}]}');
     if (!r.ok) expect(r.error).toContain('x/y');
   });
+  it('自由栏位必须位于 12 栏范围内', () => {
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"column":0}]}').ok).toBe(false);
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"span":13}]}').ok).toBe(false);
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"column":9,"span":5}]}').ok).toBe(false);
+    expect(parseDSL('{"version":1,"cards":[{"title":"a","blocks":[],"align":"middle"}]}').ok).toBe(false);
+  });
 });
 
 describe('dslToCards', () => {
@@ -82,6 +88,8 @@ describe('dslToCards', () => {
     // theme 缺省为 white，显式 theme 保留
     expect(cards[0].theme).toBe('white');
     expect(cards[1].theme).toBe('white');
+    expect(cards.map((card) => card.column)).toEqual([1, 5, 9, 1]);
+    expect(cards.every((card) => card.span === 4 && card.align === 'center')).toBe(true);
     // edge 引用新卡片 id
     expect(edges).toHaveLength(1);
     expect(edges[0].fromId).toBe(cards[0].id);
@@ -104,6 +112,8 @@ describe('cardsToDSL 与 parseDSL 互逆', () => {
     expect(r2.ok).toBe(true);
     if (r2.ok) {
       expect(r2.doc.cards.map((c) => c.title)).toEqual(['个人信息', '技能', '经历', '项目']);
+      expect(r2.doc.cards.map((c) => c.column)).toEqual([1, 5, 9, 1]);
+      expect(r2.doc.cards.every((c) => c.span === 4 && c.align === 'center')).toBe(true);
       expect(r2.doc.edges).toEqual([{ from: 0, to: 1 }]);
     }
   });

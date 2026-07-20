@@ -29,6 +29,7 @@ func newTestApp(t *testing.T) (*server.Hertz, *sql.DB) {
 	api.POST("/resumes", CreateResume(d))
 	api.GET("/resumes/:id", GetResume(d))
 	api.PUT("/resumes/:id", SaveResume(d))
+	api.POST("/resumes/:id/auto-layout", AIJournalLayout(d, nil))
 	api.PATCH("/resumes/:id", RenameResume(d))
 	api.DELETE("/resumes/:id", DeleteResume(d))
 	return h, d

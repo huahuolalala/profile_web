@@ -1,261 +1,316 @@
-import { useEffect, useRef } from 'react';
-import { Link as LinkIcon, PencilSimple, Quotes, Trash } from '@phosphor-icons/react';
+import {
+  AlignBottomSimple,
+  AlignCenterVerticalSimple,
+  AlignTopSimple,
+  ArrowSquareOut,
+  Check,
+  DotsSixVertical,
+  Link as LinkIcon,
+  Quotes,
+  Trash,
+} from '@phosphor-icons/react';
+import { motion, useReducedMotion } from 'motion/react';
+import {
+  firstText,
+  splitTimelineItem,
+  timelineBlockIndex,
+  type JournalPlacement,
+  type JournalResizeMode,
+} from '../editor/presentation';
 import type { Block, Card } from '../types';
-import CardEditor from './CardEditor';
 
 interface Props {
   card: Card;
-  z: number;
+  index: number;
+  placement: JournalPlacement;
   selected: boolean;
-  /** 多选整体拖拽时，跟随卡片的实时位置（世界坐标）；本卡自身拖拽也会收到，值一致不冲突 */
-  livePos?: { x: number; y: number };
-  editing: boolean;
-  connectMode: boolean;
-  /** 是否显示悬浮工具条（仅单选那张显示，多选时隐藏） */
-  showToolbar?: boolean;
-  linked?: boolean;
-  onClick: (id: string, additive: boolean) => void;
-  onEdit: (id: string) => void;
-  onDrag: (id: string, x: number, y: number) => void;
-  onMoveEnd: (id: string, x: number, y: number) => void;
-  onMeasure: (id: string, h: number) => void;
-  onUpdate: (card: Card) => void;
-  onCloseEdit: () => void;
-  onConnectFrom: (id: string) => void;
+  onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdate: (card: Card) => void;
+  onPointerDown: (event: React.PointerEvent<HTMLElement>, id: string) => void;
+  onResizeStart: (event: React.PointerEvent<HTMLButtonElement>, id: string, mode: JournalResizeMode) => void;
 }
 
-function firstText(blocks: Block[], n = 0): string {
-  const texts = blocks.filter((b): b is Extract<Block, { type: 'text' }> => b.type === 'text');
-  return texts[n]?.text ?? '';
-}
-
-/** 由卡片 id 哈希出 -1.3° ~ 1.3° 的确定角度：每张便签都像手贴的一样 */
 function noteAngle(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return `${(((h % 27) + 27) % 27 - 13) / 10}deg`;
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return `${(((hash % 19) + 19) % 19 - 9) / 10}deg`;
 }
 
-/** 胶带角度：-4° ~ 2°，与纸面角度错开 */
-function tapeAngle(id: string): string {
-  let h = 7;
-  for (let i = 0; i < id.length; i++) h = (h * 17 + id.charCodeAt(i)) | 0;
-  return `${(((h % 7) + 7) % 7 - 4)}deg`;
+function domainFrom(url: string): string {
+  try {
+    return new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
 }
 
-/** 通用块渲染（standard / note 等头部式卡片使用） */
-function Blocks({ card, onToggleTodo }: { card: Card; onToggleTodo?: (bi: number, ii: number) => void }) {
+function Blocks({ card, onToggleTodo }: { card: Card; onToggleTodo: (blockIndex: number, itemIndex: number) => void }) {
+  const timelineIndex = timelineBlockIndex(card);
+
   return (
-    <>
-      {card.blocks.map((b, i) => (
-        <div className="block" key={i}>
-          {b.type === 'text' && <p>{b.text}</p>}
-          {b.type === 'list' && <ul>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>}
-          {b.type === 'tags' && <div className="tags">{b.items.map((it, j) => <span className="tag" key={j}>{it}</span>)}</div>}
-          {b.type === 'image' && b.src && <img src={b.src} alt="" />}
-          {b.type === 'todo' && (
-            <ul className="todo-list">
-              {b.items.map((it, j) => (
-                <li key={j} className={it.done ? 'done' : ''}>
-                  <button
-                    className={`todo-check ${it.done ? 'done' : ''}`}
-                    title={it.done ? '标为未完成' : '标为完成'}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onToggleTodo?.(i, j); }}
+    <div className="journal-blocks">
+      {card.blocks.map((block, blockIndex) => (
+        <div className={`journal-block block-${block.type}`} key={blockIndex}>
+          {block.type === 'text' && <p>{block.text}</p>}
+          {block.type === 'list' && blockIndex === timelineIndex && (
+            <ol className="journal-timeline">
+              {block.items.map((item, itemIndex) => {
+                const part = splitTimelineItem(item, itemIndex);
+                return (
+                  <li
+                    key={itemIndex}
+                    style={{ '--timeline-tilt': `${(itemIndex % 3 - 1) * 0.65}deg` } as React.CSSProperties}
                   >
-                    {it.done ? '✓' : ''}
+                    <span className="timeline-pin" />
+                    <time>{part.date}</time>
+                    <p>{part.content}</p>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {block.type === 'list' && blockIndex !== timelineIndex && (
+            <ul className="journal-list">
+              {block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+            </ul>
+          )}
+          {block.type === 'tags' && (
+            <div className="journal-tags">
+              {block.items.map((item, itemIndex) => (
+                <span
+                  className="journal-tag"
+                  key={itemIndex}
+                  style={{ '--tag-tilt': `${(itemIndex % 3 - 1) * 1.4}deg` } as React.CSSProperties}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
+          {block.type === 'image' && block.src && (
+            <figure className="journal-photo">
+              <img src={block.src} alt="" />
+            </figure>
+          )}
+          {block.type === 'todo' && (
+            <ul className="journal-todos">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className={item.done ? 'done' : ''}>
+                  <button
+                    className="journal-check"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggleTodo(blockIndex, itemIndex);
+                    }}
+                    title={item.done ? '标为未完成' : '标为完成'}
+                  >
+                    {item.done && <Check size={13} weight="bold" />}
                   </button>
-                  <span>{it.text}</span>
+                  <span>{item.text}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
       ))}
-    </>
-  );
-}
-
-export default function CardView(p: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
-
-  useEffect(() => {
-    const el = ref.current!;
-    const ro = new ResizeObserver(() => p.onMeasure(p.card.id, el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.card.id]);
-
-  // 多选整体拖拽时，本卡不是被直接拖的那张，则跟随 livePos 位移
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || dragging.current) return;
-    if (p.livePos) {
-      el.style.left = `${p.livePos.x}px`;
-      el.style.top = `${p.livePos.y}px`;
-    } else {
-      el.style.left = `${p.card.x}px`;
-      el.style.top = `${p.card.y}px`;
-    }
-  }, [p.livePos, p.card.x, p.card.y]);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (p.editing) return;
-    e.stopPropagation();
-    p.onClick(p.card.id, e.shiftKey || e.metaKey);
-    // Shift/Cmd 点击只切换选中，不进入拖拽（避免误移）
-    if (e.shiftKey || e.metaKey) return;
-    const el = ref.current!;
-    try { el.setPointerCapture(e.pointerId); } catch { /* 合成 pointer 可能不支持捕获，忽略 */ }
-    const start = { cx: e.clientX, cy: e.clientY, x: p.card.x, y: p.card.y };
-    let cur = { x: p.card.x, y: p.card.y };
-    let moved = false;
-    dragging.current = true;
-    // 监听挂在 window：指针快速移出卡片或合成事件时仍能收到 move/up，落点不丢
-    const move = (ev: PointerEvent) => {
-      if (!moved) el.classList.add('dragging'); // 拿起手感：放大 + 投影加深
-      cur = { x: start.x + (ev.clientX - start.cx) / p.z, y: start.y + (ev.clientY - start.cy) / p.z };
-      moved = true;
-      el.style.left = `${cur.x}px`;
-      el.style.top = `${cur.y}px`;
-      p.onDrag(p.card.id, cur.x, cur.y);
-    };
-    const up = () => {
-      el.classList.remove('dragging');
-      dragging.current = false;
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      if (moved) p.onMoveEnd(p.card.id, Math.round(cur.x), Math.round(cur.y));
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-
-  const c = p.card;
-
-  const toggleTodo = (bi: number, ii: number) => {
-    const blocks = c.blocks.map((b, i) =>
-      i === bi && b.type === 'todo'
-        ? { ...b, items: b.items.map((it, j) => (j === ii ? { ...it, done: !it.done } : it)) }
-        : b,
-    );
-    p.onUpdate({ ...c, blocks });
-  };
-
-  const cls = `card type-${c.type} theme-${c.theme} ${p.selected ? 'selected' : ''} ${p.linked ? 'linked' : ''} ${c.visible ? '' : 'card-hidden'} ${p.connectMode ? 'connectable' : ''}`;
-  const style: React.CSSProperties = { left: c.x, top: c.y, width: c.w };
-  if (c.type === 'note') {
-    const vars = style as Record<string, string | number>;
-    vars['--note-rot'] = noteAngle(c.id);
-    vars['--tape-rot'] = tapeAngle(c.id);
-  }
-
-  return (
-    <div
-      ref={ref}
-      className={cls}
-      style={style}
-      onPointerDown={onPointerDown}
-      onDoubleClick={(e) => { e.stopPropagation(); p.onEdit(c.id); }}
-    >
-      {p.showToolbar && !p.editing && !p.connectMode && p.z >= 0.5 && (
-        <div className="card-toolbar" onPointerDown={(e) => e.stopPropagation()}>
-          <button title="编辑卡片" onClick={() => p.onEdit(c.id)}><PencilSimple size={13} weight="bold" /></button>
-          <button title="从此卡片开始连线" onClick={() => p.onConnectFrom(c.id)}><LinkIcon size={13} weight="bold" /></button>
-          <button
-            title="删除卡片"
-            className="danger"
-            onClick={() => { if (window.confirm(`删除卡片「${c.title}」？`)) p.onDelete(c.id); }}
-          >
-            <Trash size={13} weight="bold" />
-          </button>
-        </div>
-      )}
-      {p.editing ? (
-        <CardEditor
-          card={c}
-          onSave={(nc) => { p.onUpdate(nc); p.onCloseEdit(); }}
-          onCancel={p.onCloseEdit}
-        />
-      ) : (
-        <CardFace card={c} onToggleTodo={toggleTodo} />
-      )}
     </div>
   );
 }
 
-/** 只读卡片面：按类型分发渲染 */
-function CardFace({ card: c, onToggleTodo }: { card: Card; onToggleTodo: (bi: number, ii: number) => void }) {
-  switch (c.type) {
+function CardFace({ card, onToggleTodo }: { card: Card; onToggleTodo: (blockIndex: number, itemIndex: number) => void }) {
+  switch (card.type) {
     case 'note':
       return (
-        <>
-          <div className="note-tape" />
-          <div className="card-body note-body">
-            <Blocks card={c} onToggleTodo={onToggleTodo} />
-          </div>
-        </>
+        <div className="journal-note-face">
+          <span className="journal-tape" />
+          <Blocks card={card} onToggleTodo={onToggleTodo} />
+          <span className="journal-note-caption">{card.title}</span>
+        </div>
       );
     case 'quote': {
-      const quote = firstText(c.blocks) || c.title;
-      const sub = firstText(c.blocks, 1);
+      const quote = firstText(card.blocks) || card.title;
+      const sub = firstText(card.blocks, 1);
       return (
-        <div className="quote-face">
-          <Quotes size={26} weight="fill" className="quote-mark" />
-          <p className="quote-text">{quote}</p>
-          <div className="quote-by">{c.title}{sub ? ` · ${sub}` : ''}</div>
+        <div className="journal-quote-face">
+          <Quotes size={34} weight="fill" />
+          <blockquote>{quote}</blockquote>
+          <p>{card.title}{sub ? ` / ${sub}` : ''}</p>
         </div>
       );
     }
     case 'link': {
-      const url = firstText(c.blocks);
-      const desc = firstText(c.blocks, 1);
-      let domain = url;
-      try { domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, ''); } catch { /* 原样展示 */ }
+      const url = firstText(card.blocks);
+      const description = firstText(card.blocks, 1);
       return (
-        <div className="link-face">
-          <div className="link-top">
-            <span className="link-chip"><LinkIcon size={13} weight="bold" />{domain || '链接'}</span>
+        <div className="journal-link-face">
+          <div className="journal-link-domain"><LinkIcon size={14} weight="bold" />{domainFrom(url) || '链接'}</div>
+          <div className="journal-link-copy">
+            <h3>{card.title}</h3>
+            {description && <p>{description}</p>}
           </div>
-          <div className="link-title">{c.title}</div>
-          {desc && <p className="link-desc">{desc}</p>}
-          {c.blocks.filter((b) => b.type === 'image' && b.src).map((b, i) => (
-            <img key={i} src={(b as Extract<Block, { type: 'image' }>).src} alt="" className="link-img" />
-          ))}
+          <ArrowSquareOut size={22} weight="bold" className="journal-link-arrow" />
         </div>
       );
     }
     case 'stat': {
-      const num = firstText(c.blocks) || '—';
-      const sub = firstText(c.blocks, 1);
+      const number = firstText(card.blocks) || '未填写';
+      const sub = firstText(card.blocks, 1);
       return (
-        <div className="stat-face">
-          <div className="stat-num">{num}</div>
-          <div className="stat-label">{c.title}</div>
-          {sub && <div className="stat-sub">{sub}</div>}
+        <div className="journal-stat-face">
+          <span className="journal-stat-kicker">{card.title}</span>
+          <strong>{number}</strong>
+          {sub && <p>{sub}</p>}
+          <span className="journal-stat-ring" />
         </div>
       );
     }
-    case 'todo':
+    case 'todo': {
+      const todoBlock = card.blocks.find((block): block is Extract<Block, { type: 'todo' }> => block.type === 'todo');
+      const done = todoBlock?.items.filter((item) => item.done).length ?? 0;
+      const total = todoBlock?.items.length ?? 0;
       return (
         <>
-          <div className="card-header">{c.title}</div>
-          <div className="card-body">
-            <Blocks card={c} onToggleTodo={onToggleTodo} />
-          </div>
+          <header className="journal-card-header journal-todo-header">
+            <span>{card.title}</span>
+            <small>{done}/{total}</small>
+          </header>
+          <Blocks card={card} onToggleTodo={onToggleTodo} />
         </>
       );
+    }
     default:
       return (
         <>
-          <div className="card-header">{c.title}</div>
-          <div className="card-body">
-            <Blocks card={c} onToggleTodo={onToggleTodo} />
-          </div>
+          <header className="journal-card-header">
+            <span>{card.title}</span>
+          </header>
+          <Blocks card={card} onToggleTodo={onToggleTodo} />
         </>
       );
   }
+}
+
+function cardClassName(card: Card, index: number, selected = false): string {
+  return [
+    'journal-card',
+    `journal-card-${card.type}`,
+    `journal-theme-${card.theme}`,
+    index === 0 ? 'journal-card-first' : '',
+    selected ? 'selected' : '',
+    card.h ? 'journal-card-custom-height' : '',
+    card.visible ? '' : 'journal-card-hidden',
+  ].filter(Boolean).join(' ');
+}
+
+export function JournalCardDragPreview({ card, index }: { card: Card; index: number }) {
+  return (
+    <article
+      className={`${cardClassName(card, index)} journal-card-drag-preview`}
+      style={{ '--note-angle': noteAngle(card.id) } as React.CSSProperties}
+    >
+      <CardFace card={card} onToggleTodo={() => undefined} />
+    </article>
+  );
+}
+
+export default function CardView(props: Props) {
+  const { card } = props;
+  const reduceMotion = useReducedMotion();
+
+  const toggleTodo = (blockIndex: number, itemIndex: number) => {
+    const blocks = card.blocks.map((block, currentBlockIndex) =>
+      currentBlockIndex === blockIndex && block.type === 'todo'
+        ? {
+            ...block,
+            items: block.items.map((item, currentItemIndex) =>
+              currentItemIndex === itemIndex ? { ...item, done: !item.done } : item,
+            ),
+          }
+        : block,
+    );
+    props.onUpdate({ ...card, blocks });
+  };
+
+  return (
+    <motion.article
+      layout="position"
+      transition={reduceMotion ? { duration: 0 } : { layout: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
+      className={cardClassName(card, props.index, props.selected)}
+      style={{
+        '--note-angle': noteAngle(card.id),
+        '--journal-column': props.placement.column,
+        '--journal-span': props.placement.span,
+        '--journal-row': props.placement.row,
+        '--journal-align': props.placement.align,
+        height: card.h,
+      } as React.CSSProperties}
+      data-card-id={card.id}
+      data-grid-row={props.placement.row}
+      onClick={() => props.onSelect(card.id)}
+      onPointerDown={(event) => props.onPointerDown(event, card.id)}
+    >
+      {props.selected && (
+        <div className="journal-card-toolbar" onClick={(event) => event.stopPropagation()}>
+          <span data-drag-handle title="拖动素材调整位置"><DotsSixVertical size={15} /></span>
+          <div className="journal-align-controls" aria-label="竖向对齐">
+            <button
+              className={props.placement.align === 'start' ? 'active' : ''}
+              onClick={() => props.onUpdate({ ...card, align: 'start' })}
+              title="顶部对齐"
+            >
+              <AlignTopSimple size={14} />
+            </button>
+            <button
+              className={props.placement.align === 'center' ? 'active' : ''}
+              onClick={() => props.onUpdate({ ...card, align: 'center' })}
+              title="垂直居中"
+            >
+              <AlignCenterVerticalSimple size={14} />
+            </button>
+            <button
+              className={props.placement.align === 'end' ? 'active' : ''}
+              onClick={() => props.onUpdate({ ...card, align: 'end' })}
+              title="底部对齐"
+            >
+              <AlignBottomSimple size={14} />
+            </button>
+          </div>
+          <button
+            className="danger"
+            onClick={() => props.onDelete(card.id)}
+            title="删除素材"
+          >
+            <Trash size={14} />
+          </button>
+        </div>
+      )}
+      <div className="journal-card-content">
+        <CardFace card={card} onToggleTodo={toggleTodo} />
+      </div>
+      <output className="journal-resize-readout" />
+      {props.selected && (
+        <>
+          <button
+            className="journal-resize-handle journal-resize-horizontal"
+            aria-label="横向调整素材宽度"
+            title="横向调整宽度"
+            onPointerDown={(event) => props.onResizeStart(event, card.id, 'horizontal')}
+          />
+          <button
+            className="journal-resize-handle journal-resize-vertical"
+            aria-label="纵向调整素材高度"
+            title="纵向调整高度"
+            onPointerDown={(event) => props.onResizeStart(event, card.id, 'vertical')}
+          />
+          <button
+            className="journal-resize-handle journal-resize-ratio"
+            aria-label="等比例调整素材大小"
+            title="等比例调整大小"
+            onPointerDown={(event) => props.onResizeStart(event, card.id, 'ratio')}
+          />
+        </>
+      )}
+    </motion.article>
+  );
 }

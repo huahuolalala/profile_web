@@ -30,8 +30,10 @@ func TestResumeCRUD(t *testing.T) {
 	// 整批保存：故意让 y 大的卡片排在前面，验证后端按 y/x 推导 sort_order
 	save := map[string]any{
 		"title": "我的简历",
+		"style": "minimal",
 		"cards": []map[string]any{
-			{"id": "c2", "title": "技能", "theme": "yellow", "x": 300, "y": 400, "w": 260, "visible": true,
+			{"id": "c2", "title": "技能", "theme": "yellow", "x": 300, "y": 400, "w": 260, "h": 284,
+				"column": 7, "span": 6, "align": "end", "visible": true,
 				"blocks": []map[string]any{{"type": "tags", "items": []string{"Go"}}}},
 			{"id": "c1", "title": "个人信息", "theme": "white", "x": 0, "y": 0, "w": 260, "visible": true,
 				"blocks": []map[string]any{{"type": "text", "text": "张三"}}},
@@ -47,8 +49,13 @@ func TestResumeCRUD(t *testing.T) {
 	var got struct {
 		Resume struct {
 			Title string `json:"title"`
+			Style string `json:"style"`
 			Cards []struct {
 				ID     string           `json:"id"`
+				H      *float64         `json:"h"`
+				Column *int             `json:"column"`
+				Span   *int             `json:"span"`
+				Align  string           `json:"align"`
 				Blocks []map[string]any `json:"blocks"`
 			} `json:"cards"`
 			Edges []map[string]string `json:"edges"`
@@ -58,8 +65,19 @@ func TestResumeCRUD(t *testing.T) {
 	if len(got.Resume.Cards) != 2 || got.Resume.Cards[0].ID != "c1" {
 		t.Fatalf("sort_order wrong: %+v", got.Resume.Cards)
 	}
+	if got.Resume.Style != "minimal" {
+		t.Fatalf("style roundtrip failed: %q", got.Resume.Style)
+	}
 	if got.Resume.Cards[0].Blocks[0]["text"] != "张三" {
 		t.Fatalf("blocks roundtrip failed: %+v", got.Resume.Cards[0].Blocks)
+	}
+	if got.Resume.Cards[1].H == nil || *got.Resume.Cards[1].H != 284 {
+		t.Fatalf("custom height roundtrip failed: %+v", got.Resume.Cards[1].H)
+	}
+	if got.Resume.Cards[1].Column == nil || *got.Resume.Cards[1].Column != 7 ||
+		got.Resume.Cards[1].Span == nil || *got.Resume.Cards[1].Span != 6 ||
+		got.Resume.Cards[1].Align != "end" {
+		t.Fatalf("journal layout roundtrip failed: %+v", got.Resume.Cards[1])
 	}
 	if len(got.Resume.Edges) != 1 {
 		t.Fatalf("edges missing: %+v", got.Resume.Edges)

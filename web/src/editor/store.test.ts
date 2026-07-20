@@ -7,6 +7,7 @@ const card = (id: string): Card => ({ id, title: id, type: 'standard', theme: 'w
 
 const doc: EditorDoc = {
   title: 't',
+  style: 'journal',
   cards: [card('a'), card('b')],
   edges: [{ id: 'e1', fromId: 'a', toId: 'b' }],
 };
@@ -21,6 +22,9 @@ describe('docReducer', () => {
     const d = docReducer(doc, { type: 'card/delete', id: 'a' });
     expect(d.cards).toHaveLength(1);
     expect(d.edges).toHaveLength(0);
+  });
+  it('style/set 切换整本手账风格', () => {
+    expect(docReducer(doc, { type: 'style/set', style: 'minimal' }).style).toBe('minimal');
   });
   it('edge/add 与 edge/delete', () => {
     const d = docReducer(doc, { type: 'edge/add', edge: { id: 'e2', fromId: 'b', toId: 'a' } });
@@ -40,13 +44,13 @@ describe('editorReducer 历史', () => {
     expect(s.present.title).toBe('new');
   });
   it('doc/load 重置历史：加载后不可撤销（回归：撤销曾清空刚加载的简历）', () => {
-    const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
+    const EMPTY: EditorDoc = { title: '', style: 'journal', cards: [], edges: [] };
     const s = editorReducer(initEditor(EMPTY), { type: 'doc/load', doc });
     expect(canUndo(s)).toBe(false);
     expect(s.present).toBe(doc);
   });
   it('doc/replace 仍然入栈，可撤销（导入路径）', () => {
-    const EMPTY: EditorDoc = { title: '', cards: [], edges: [] };
+    const EMPTY: EditorDoc = { title: '', style: 'journal', cards: [], edges: [] };
     const s = editorReducer(initEditor(EMPTY), { type: 'doc/replace', doc });
     expect(canUndo(s)).toBe(true);
     expect(s.present).toBe(doc);

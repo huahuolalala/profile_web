@@ -31,7 +31,7 @@ export default function Login() {
       <form className="auth-card" onSubmit={(e) => { e.preventDefault(); if (!busy) void submit(); }}>
         <div className="brand-mark-img"><img src="/logo-192.png" alt="YumMe" /></div>
         <h1>YumMe</h1>
-        <p className="auth-sub">欢迎回来，继续摆你的画布</p>
+        <p className="auth-sub">欢迎回来，继续制作你的手账</p>
         <label className="field">
           <span className="field-label">用户名</span>
           <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="请输入用户名" autoFocus />

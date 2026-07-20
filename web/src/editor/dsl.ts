@@ -1,4 +1,13 @@
-import { CARD_TYPES, type Block, type Card, type CardTheme, type CardType, type Edge, type TodoItem } from '../types';
+import {
+  CARD_TYPES,
+  type Block,
+  type Card,
+  type CardTheme,
+  type CardType,
+  type CardVerticalAlign,
+  type Edge,
+  type TodoItem,
+} from '../types';
 
 export const CARD_W = 260;
 const GRID_COLS = 3;
@@ -12,6 +21,9 @@ export interface DSLCard {
   blocks: Block[];
   x?: number;
   y?: number;
+  column?: number;
+  span?: number;
+  align?: CardVerticalAlign;
 }
 
 export interface DSLDoc {
@@ -80,6 +92,21 @@ export function parseDSL(text: string): ParseResult {
     if ((c.x !== undefined && typeof c.x !== 'number') || (c.y !== undefined && typeof c.y !== 'number')) {
       return { ok: false, error: `cards[${i}].x/y 必须是数字` };
     }
+    if (
+      c.column !== undefined
+      && (!Number.isInteger(c.column) || c.column < 1 || c.column > 12)
+    ) {
+      return { ok: false, error: `cards[${i}].column 必须是 1-12 的整数` };
+    }
+    if (c.span !== undefined && (!Number.isInteger(c.span) || c.span < 1 || c.span > 12)) {
+      return { ok: false, error: `cards[${i}].span 必须是 1-12 的整数` };
+    }
+    if (c.align !== undefined && !['start', 'center', 'end'].includes(c.align)) {
+      return { ok: false, error: `cards[${i}].align 仅支持 start/center/end` };
+    }
+    if (c.column !== undefined && c.span !== undefined && c.column + c.span > 13) {
+      return { ok: false, error: `cards[${i}] 的 column + span 超出 12 栏` };
+    }
   }
   if (doc.edges !== undefined) {
     if (!Array.isArray(doc.edges)) return { ok: false, error: 'edges 必须是数组' };
@@ -119,17 +146,24 @@ export function dslToCards(doc: DSLDoc, existing: Card[]): { cards: Card[]; edge
     rowTops.push(top);
     top += Math.max(...heights.slice(r * GRID_COLS, (r + 1) * GRID_COLS)) + GAP;
   }
-  const cards: Card[] = doc.cards.map((c, i) => ({
-    id: crypto.randomUUID(),
-    title: c.title,
-    type: c.type ?? 'standard',
-    theme: c.theme ?? 'white',
-    x: c.x ?? (i % GRID_COLS) * (CARD_W + GAP),
-    y: c.y ?? rowTops[Math.floor(i / GRID_COLS)],
-    w: CARD_W,
-    visible: true,
-    blocks: c.blocks,
-  }));
+  const cards: Card[] = doc.cards.map((c, i) => {
+    const span = c.span ?? 4;
+    const column = c.column ?? Math.min((i % GRID_COLS) * 4 + 1, 13 - span);
+    return {
+      id: crypto.randomUUID(),
+      title: c.title,
+      type: c.type ?? 'standard',
+      theme: c.theme ?? 'white',
+      x: c.x ?? (i % GRID_COLS) * (CARD_W + GAP),
+      y: c.y ?? rowTops[Math.floor(i / GRID_COLS)],
+      w: CARD_W,
+      column,
+      span,
+      align: c.align ?? 'center',
+      visible: true,
+      blocks: c.blocks,
+    };
+  });
   const edges: Edge[] = (doc.edges ?? []).map((e) => ({
     id: crypto.randomUUID(),
     fromId: cards[e.from].id,
@@ -150,6 +184,9 @@ export function cardsToDSL(cards: Card[], edges: Edge[]): string {
       blocks: c.blocks,
       x: Math.round(c.x),
       y: Math.round(c.y),
+      column: c.column,
+      span: c.span,
+      align: c.align,
     })),
     edges: edges
       .filter((e) => idx.has(e.fromId) && idx.has(e.toId))
